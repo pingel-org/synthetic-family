@@ -9,6 +9,7 @@ Explore this dataset using [Semiont](https://github.com/The-AI-Alliance/semiont)
 - **Node.js 20+** — [nodejs.org](https://nodejs.org/)
 - **Docker or Podman** — for the database and proxy containers
 - **Inference provider** — either an `ANTHROPIC_API_KEY` (cloud) or [Ollama](https://ollama.com/) running locally
+- **Neo4j** — a free cloud instance at [Neo4j Aura](https://neo4j.com/cloud/aura/) or Neo4j running locally
 
 ### Install and run
 
