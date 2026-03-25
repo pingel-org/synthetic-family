@@ -1,0 +1,34 @@
+# Family History Dataset Configuration
+#
+# Family history documents and photographs demonstrating:
+# - Multi-document loading (text and images)
+# - Mixed media types (markdown and images)
+# - Local file loading (no download needed)
+# - No chunking (individual documents are small)
+
+name: family_history
+displayName: Turner Family History
+emoji: 👨‍👩‍👧‍👦
+handler: local-multi-doc
+
+# Local directory path
+cacheFile: config/family_history
+
+# Multi-document configuration
+isMultiDocument: true
+
+# Processing options
+shouldChunk: false
+
+# Entity types for tagging
+entityTypes:
+  - family-history
+  - genealogy
+  - biography
+  - historical
+
+# Table of Contents
+createTableOfContents: false
+
+# Citation detection
+detectCitations: false
