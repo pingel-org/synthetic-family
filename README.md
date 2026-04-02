@@ -17,7 +17,7 @@ Explore this dataset using [Semiont](https://github.com/The-AI-Alliance/semiont)
 npm install -g @semiont/cli neo4j-driver
 git clone https://github.com/pingel-org/synthetic_family
 cd synthetic_family
-semiont local --yes
+semiont serve
 ```
 
 `semiont local` sets up and starts all services in one step. When it finishes, open **http://localhost:8080** and log in with:
