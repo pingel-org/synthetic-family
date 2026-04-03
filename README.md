@@ -4,28 +4,83 @@
 
 Explore this dataset using [Semiont](https://github.com/The-AI-Alliance/semiont), an open-source knowledge base platform for annotation and knowledge extraction.
 
-### Prerequisites
+### Backend
 
-- **Node.js 20+** — [nodejs.org](https://nodejs.org/)
-- **Docker or Podman** — for the database and proxy containers
+#### Prerequisites
+
 - **Inference provider** — either an `ANTHROPIC_API_KEY` (cloud) or [Ollama](https://ollama.com/) running locally
 - **Neo4j** — a free cloud instance at [Neo4j Aura](https://neo4j.com/cloud/aura/) or Neo4j running locally
 
-### Install and run
+#### Container
+
+Use [Docker](https://www.docker.com/), [Podman](https://podman.io/), or [Apple Container](https://github.com/apple/container). Replace `container` below with `docker` or `podman` as needed.
+
+```bash
+container build --tag semiont-backend --file .semiont/containers/Dockerfile.backend .
+container run --publish 4000:4000 \
+  --volume $(pwd):/kb \
+  --env NEO4J_URI=<your-neo4j-uri> \
+  --env NEO4J_USERNAME=<your-neo4j-username> \
+  --env NEO4J_PASSWORD=<your-neo4j-password> \
+  --env NEO4J_DATABASE=<your-neo4j-database> \
+  --env ANTHROPIC_API_KEY=<your-api-key> \
+  -it semiont-backend
+```
+
+#### npm (local)
 
 ```bash
 npm install -g @semiont/cli neo4j-driver
-git clone https://github.com/pingel-org/synthetic_family
-cd synthetic_family
 semiont serve
 ```
 
-`semiont local` sets up and starts all services in one step. When it finishes, open **http://localhost:8080** and log in with:
-
-- **Email:** `admin@example.com`
-- **Password:** `password`
+`semiont serve` sets up and starts all services in one step.
 
 For full details see the [Semiont Local Setup Guide](https://github.com/The-AI-Alliance/semiont/blob/main/docs/LOCAL-SEMIONT.md).
+
+### Verifying the backend
+
+Open **http://localhost:4000**. You should see a simple status page confirming the backend is running.
+
+### Frontend
+
+#### Container
+
+```bash
+container build --tag semiont-frontend --file .semiont/containers/Dockerfile.frontend .
+container run --publish 3000:3000 -it semiont-frontend
+```
+
+#### npm (local)
+
+```bash
+npm install -g @semiont/cli
+semiont init
+semiont provision --service frontend
+semiont start -s frontend
+```
+
+Open **http://localhost:3000**.
+
+### Logging in
+
+Once both backend and frontend are running, open **http://localhost:3000** and enter **http://localhost:4000** as the knowledge base URL. Log in with the username and password you created during backend setup.
+
+### Using Semiont
+
+Semiont organizes work around seven composable flows. The ones most relevant to this dataset:
+
+- **Mark** — Annotate documents by selecting text manually or using AI-assisted detection (the ✨ button). Annotations follow the [W3C Web Annotation](https://github.com/The-AI-Alliance/semiont/blob/main/specs/docs/W3C-WEB-ANNOTATION.md) standard and can be highlights, comments, tags, or entity references.
+- **Bind** — Resolve entity references by linking annotations to other resources in the knowledge graph. The resolution wizard (🕸️🧙) searches for matching candidates and scores them.
+- **Yield** — Generate new resources from annotations. AI agents can produce summaries or new content from annotated passages.
+- **Match** — Search the knowledge base for candidates during entity resolution. Uses composite scoring across name similarity, entity type, graph connectivity, and optional LLM re-ranking.
+- **Gather** — Assemble surrounding context (text, metadata, graph neighborhood) to improve detection, resolution, and generation quality.
+
+A typical workflow: upload documents → detect entities with AI → resolve references to build the knowledge graph → generate summaries or new resources from what you've found.
+
+For deeper understanding, see the [architecture overview](https://github.com/The-AI-Alliance/semiont/blob/main/docs/ARCHITECTURE.md), the [project layout](https://github.com/The-AI-Alliance/semiont/blob/main/docs/PROJECT-LAYOUT.md), and the individual [flow docs](https://github.com/The-AI-Alliance/semiont/tree/main/docs/flows). The [API reference](https://github.com/The-AI-Alliance/semiont/blob/main/specs/docs/API.md) covers all HTTP endpoints.
+
+Other example knowledge bases: [gutenberg-kb](https://github.com/The-AI-Alliance/gutenberg-kb) (public domain literature) and [semiont-workflows](https://github.com/The-AI-Alliance/semiont-workflows) (end-to-end pipeline).
 
 ---
 

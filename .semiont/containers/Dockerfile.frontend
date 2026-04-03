@@ -1,0 +1,25 @@
+FROM node:20-alpine
+
+RUN npm install -g @semiont/cli && npm cache clean --force
+
+WORKDIR /app
+
+RUN cat <<'EOF' > /root/.semiontconfig
+[user]
+name = "semiont"
+email = ""
+
+[defaults]
+environment = "local"
+
+[environments.local.frontend]
+platform = "posix"
+port = 3000
+publicURL = "http://localhost:3000"
+EOF
+
+EXPOSE 3000
+
+CMD semiont provision --verbose --service frontend && \
+    semiont start --verbose -s frontend && \
+    tail -f /root/.local/state/semiont/app/frontend/app.log
