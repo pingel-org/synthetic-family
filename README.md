@@ -13,10 +13,10 @@ Explore this dataset using [Semiont](https://github.com/The-AI-Alliance/semiont)
 
 #### Container
 
-Use [Docker](https://www.docker.com/), [Podman](https://podman.io/), or [Apple Container](https://github.com/apple/container). Replace `container` below with `docker` or `podman` as needed.
+Use [Apple Container](https://github.com/apple/container), [Docker](https://www.docker.com/), or [Podman](https://podman.io/). Replace `container` below with `docker` or `podman` as needed.
 
 ```bash
-container build --tag semiont-backend --file .semiont/containers/Dockerfile.backend .
+container build --no-cache --tag semiont-backend --file .semiont/containers/Dockerfile.backend .
 container run --publish 4000:4000 \
   --volume $(pwd):/kb \
   --env NEO4J_URI=<your-neo4j-uri> \
@@ -47,7 +47,7 @@ Open **http://localhost:4000**. You should see a simple status page confirming t
 #### Container
 
 ```bash
-container build --tag semiont-frontend --file .semiont/containers/Dockerfile.frontend .
+container build --no-cache --tag semiont-frontend --file .semiont/containers/Dockerfile.frontend .
 container run --publish 3000:3000 -it semiont-frontend
 ```
 

@@ -1,7 +1,10 @@
 FROM node:20-alpine
 
 RUN apk add --no-cache git
-RUN npm install -g @semiont/cli && npm cache clean --force
+ARG NPM_REGISTRY=https://registry.npmjs.org
+RUN npm config set registry $NPM_REGISTRY && \
+    npm install -g @semiont/cli neo4j-driver && \
+    npm cache clean --force
 
 WORKDIR /kb
 
@@ -69,9 +72,8 @@ type = "anthropic"
 model = "claude-sonnet-4-5-20250929"
 
 [environments.local.database]
-platform = "container"
-image = "postgres:15-alpine"
-host = "localhost"
+platform = "external"
+host = "${POSTGRES_HOST}"
 port = 5432
 name = "semiont"
 user = "postgres"
