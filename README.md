@@ -33,18 +33,18 @@ Start the backend with one of the available inference configurations:
 
 ```bash
 # Fully local with Ollama (default, no API key needed)
-.semiont/scripts/local_backend.sh --email admin@example.com --password password
+.semiont/scripts/start.sh --email admin@example.com --password password
 ```
 
 ```bash
 # Anthropic cloud inference
 export ANTHROPIC_API_KEY=<your-api-key>
-.semiont/scripts/local_backend.sh --config anthropic --email admin@example.com --password password
+.semiont/scripts/start.sh --config anthropic --email admin@example.com --password password
 ```
 
 ```bash
 # See available configs
-.semiont/scripts/local_backend.sh --list-configs
+.semiont/scripts/start.sh --list-configs
 ```
 
 Starts PostgreSQL and the Semiont backend in containers, and creates an admin user. The script stays attached and streams logs — open a separate terminal for the frontend. Press Ctrl+C to stop.
