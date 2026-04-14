@@ -47,7 +47,7 @@ export ANTHROPIC_API_KEY=<your-api-key>
 .semiont/scripts/start.sh --list-configs
 ```
 
-Starts PostgreSQL and the Semiont backend in containers, and creates an admin user. The script stays attached and streams logs — open a separate terminal for the frontend. Press Ctrl+C to stop.
+Starts PostgreSQL and the Semiont backend in containers, and creates an admin user. The script stays attached and streams logs — open a separate terminal for the browser. Press Ctrl+C to stop.
 
 Open **http://localhost:4000** to verify.
 
