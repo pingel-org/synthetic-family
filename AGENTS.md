@@ -20,7 +20,7 @@ If you're an AI assistant working in this repo, this file is your orientation. T
 
 | Skill | What it does | New SDK verbs |
 |---|---|---|
-| [`ingest-corpus`](skills/ingest-corpus/) | Walk the repo, create one resource per file | `yield.resource` |
+| [`ingest-corpus`](skills/ingest-corpus/) | Walk the repo, declare the KB's entity-type vocabulary, create one resource per file | `frame.addEntityTypes`, `yield.resource` |
 | [`mark-people`](skills/mark-people/) | Detect Person mentions (named + descriptive) | `mark.assist` (linking + descriptive references) |
 | [`mark-places-and-events`](skills/mark-places-and-events/) | Detect Place / HistoricalEvent / Date mentions | `mark.assist` (linking) |
 | [`assess-historical-anchors`](skills/assess-historical-anchors/) | Flag biography-meets-history inflection moments | `mark.assist` (assessing) |

@@ -12,6 +12,65 @@ import { SemiontClient } from '@semiont/sdk';
 import { discoverCorpus, readForUpload, type CorpusFile } from '../../src/files.js';
 import { confirm, close as closeInteractive, isInteractive } from '../../src/interactive.js';
 
+/**
+ * The full entity-type vocabulary this KB uses across all eleven skills.
+ * Declared via `frame.addEntityTypes` once on each ingest run — idempotent,
+ * so re-runs are harmless. This is what makes `browse.entityTypes()` return
+ * a coherent published vocabulary instead of an implicit accumulation of
+ * whatever any individual mark.assist call happened to stamp.
+ */
+const KB_ENTITY_TYPES = [
+  // Source-document types from src/files.ts
+  'Biography',
+  'Subject',
+  'Letter',
+  'Correspondence',
+  'Diary',
+  'Journal',
+  'Memoir',
+  'Photograph',
+  'FamilyImage',
+  'SourceData',
+  // Curated-context article markers
+  'HistoricalContext',
+  'Curated',
+  // mark-people entity types
+  'Person',
+  'Relative',
+  'Acquaintance',
+  'HistoricalFigure',
+  // mark-places-and-events entity types — places
+  'Place',
+  'Town',
+  'County',
+  'State',
+  'Country',
+  'Region',
+  'MilitaryLocation',
+  'Institution',
+  'Cemetery',
+  // mark-places-and-events entity types — events
+  'HistoricalEvent',
+  'War',
+  'Battle',
+  'Disaster',
+  'LegislativeAct',
+  'EconomicEvent',
+  'Migration',
+  'Era',
+  'Decade',
+  // mark-places-and-events entity types — time
+  'Date',
+  'Year',
+  'DateRange',
+  'LifeEvent',
+  // Theme + synthesized aggregates
+  'Theme',
+  'Timeline',
+  'LifeAndTimes',
+  'Aggregate',
+];
+
 async function main(): Promise<void> {
   const repoRoot = process.cwd();
   const files = discoverCorpus(repoRoot);
@@ -48,6 +107,10 @@ async function main(): Promise<void> {
     email: process.env.SEMIONT_USER_EMAIL!,
     password: process.env.SEMIONT_USER_PASSWORD!,
   });
+
+  // Declare this KB's entity-type vocabulary via frame. Idempotent.
+  console.log(`Declaring ${KB_ENTITY_TYPES.length} entity types via frame...`);
+  await semiont.frame.addEntityTypes(KB_ENTITY_TYPES);
 
   let created = 0;
   let failed = 0;
