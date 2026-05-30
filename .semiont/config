@@ -1,5 +1,5 @@
 [project]
-name = "synthetic_family"
+name = "Family History Demo Dataset"
 version = "0.1.0"
 
 [git]
@@ -7,6 +7,6 @@ sync = true
 
 [site]
 domain = "localhost:8080"
-siteName = "synthetic_family"
+siteName = "Family History Demo Dataset"
 adminEmail = ""
 oauthAllowedDomains = ["example.com"]

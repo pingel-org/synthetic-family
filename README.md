@@ -1,5 +1,9 @@
 # Family History Demo Dataset
 
+[![Lint](https://github.com/pingel-org/synthetic-family/actions/workflows/lint.yml/badge.svg?branch=main)](https://github.com/pingel-org/synthetic-family/actions/workflows/lint.yml?query=branch%3Amain)
+[![Build](https://github.com/pingel-org/synthetic-family/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/pingel-org/synthetic-family/actions/workflows/build.yml?query=branch%3Amain)
+[![License](https://img.shields.io/github/license/pingel-org/synthetic-family)](https://github.com/pingel-org/synthetic-family/blob/main/LICENSE)
+
 Synthetic family history documents created for demonstration purposes — designed for annotation, entity recognition, and knowledge extraction.
 
 ## About This Dataset

@@ -1,5 +1,5 @@
 {
-  "name": "Semiont Template KB",
+  "name": "synthetic-family",
   "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
 
   "features": {
