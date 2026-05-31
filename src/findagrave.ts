@@ -82,8 +82,8 @@ export function extractMemorialUrl(markdown: string): string | null {
     /\]\((https?:\/\/(?:www\.)?findagrave\.com\/memorial\/[^)]+)\)/,
   ];
   for (const pattern of patterns) {
-    const m = markdown.match(pattern);
-    if (m) return m[1];
+    const url = markdown.match(pattern)?.[1];
+    if (url !== undefined) return url;
   }
   return null;
 }

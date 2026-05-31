@@ -11,7 +11,9 @@
  */
 
 import {
-  SemiontClient,
+  SemiontSession,
+  InMemorySessionStorage,
+  type KnowledgeBase,
   resourceId as ridBrand,
   type AnnotationId,
   type GatheredContext,
@@ -39,152 +41,173 @@ function slugify(text: string): string {
 }
 
 async function main(): Promise<void> {
-  const semiont = await SemiontClient.signInHttp({
-    baseUrl: process.env.SEMIONT_API_URL ?? 'http://localhost:4000',
-    email: process.env.SEMIONT_USER_EMAIL!,
-    password: process.env.SEMIONT_USER_PASSWORD!,
-  });
-
-  // Find biographical resources to walk for historical-event annotations
-  const all = await semiont.browse.resources({ limit: 1000 });
-  const bioResources = all.filter((r) =>
-    (r.entityTypes ?? []).some(
-      (t) => t === 'Biography' || t === 'Subject' || t === 'Letter' || t === 'Diary' || t === 'Memoir',
-    ),
-  );
-
-  if (bioResources.length === 0) {
-    console.log('No biographical resources found.');
-    semiont.dispose();
-    closeInteractive();
-    return;
-  }
-
-  // Collect all historical-event annotations across the corpus
-  type AnnoRef = {
-    rId: ResourceId;
-    annId: AnnotationId;
-    text: string;
-    entityTypes: string[];
+  const baseUrl = process.env.SEMIONT_API_URL ?? 'http://localhost:4000';
+  const email = process.env.SEMIONT_USER_EMAIL!;
+  const password = process.env.SEMIONT_USER_PASSWORD!;
+  const u = new URL(baseUrl);
+  const kb: KnowledgeBase = {
+    id: 'synthetic-family-build-historical-context',
+    label: 'synthetic-family build-historical-context',
+    email,
+    endpoint: { kind: 'http', host: u.hostname, port: Number(u.port) || 4000, protocol: u.protocol.replace(':', '') as 'http' | 'https' },
   };
-  const historicalAnnotations: AnnoRef[] = [];
-  for (const r of bioResources) {
-    const rId = ridBrand(r['@id']);
-    const annotations = await semiont.browse.annotations(rId);
-    for (const ann of annotations) {
-      if (ann.motivation !== 'linking') continue;
-      const ets = (ann.body ?? [])
-        .filter((b: any) => b.type === 'TextualBody' && b.purpose === 'tagging')
-        .flatMap((b: any) => Array.isArray(b.value) ? b.value : [b.value]);
-      const matchedHistorical = ets.filter((t: string) => HISTORICAL_TYPES.has(t));
-      if (matchedHistorical.length === 0) continue;
-      historicalAnnotations.push({
-        rId,
-        annId: ann.id,
-        text: ann.target?.selector?.exact ?? '',
-        entityTypes: matchedHistorical,
-      });
-    }
-  }
+  const session = await SemiontSession.signInHttp({ kb, storage: new InMemorySessionStorage(), baseUrl, email, password });
+  const semiont = session.client;
 
-  if (historicalAnnotations.length === 0) {
-    console.log(
-      'No historical-event annotations found. Run skills/mark-places-and-events/script.ts first.',
+  try {
+    // Find biographical resources to walk for historical-event annotations
+    const all = await semiont.browse.resources({ limit: 1000 });
+    const bioResources = all.filter((r) =>
+      (r.entityTypes ?? []).some(
+        (t) => t === 'Biography' || t === 'Subject' || t === 'Letter' || t === 'Diary' || t === 'Memoir',
+      ),
     );
-    semiont.dispose();
-    closeInteractive();
-    return;
-  }
 
-  // Cluster by canonical-name (lowercased text). Real disambiguation is the
-  // model's job via gather/match — this is a coarse first pass.
-  const clusters = new Map<string, AnnoRef[]>();
-  for (const a of historicalAnnotations) {
-    const key = a.text.toLowerCase().trim();
-    if (!clusters.has(key)) clusters.set(key, []);
-    clusters.get(key)!.push(a);
-  }
+    if (bioResources.length === 0) {
+      console.log('No biographical resources found.');
+      closeInteractive();
+      return;
+    }
 
-  console.log(
-    `Found ${historicalAnnotations.length} historical-event annotations, ` +
-      `clustered into ${clusters.size} distinct events.`,
-  );
+    // Collect all historical-event annotations across the corpus
+    type AnnoRef = {
+      rId: ResourceId;
+      annId: AnnotationId;
+      text: string;
+      entityTypes: string[];
+    };
+    const historicalAnnotations: AnnoRef[] = [];
+    for (const r of bioResources) {
+      const rId = ridBrand(r['@id']);
+      const annotations = await semiont.browse.annotations(rId);
+      for (const ann of annotations) {
+        if (ann.motivation !== 'linking') continue;
+        const bodies = Array.isArray(ann.body) ? ann.body : ann.body ? [ann.body] : [];
+        const ets = bodies
+          .filter((b: any) => b.type === 'TextualBody' && b.purpose === 'tagging')
+          .flatMap((b: any) => Array.isArray(b.value) ? b.value : [b.value]);
+        const matchedHistorical = ets.filter((t: string) => HISTORICAL_TYPES.has(t));
+        if (matchedHistorical.length === 0) continue;
+        const target = ann.target;
+        const selectors =
+          typeof target === 'string' || !target.selector
+            ? []
+            : Array.isArray(target.selector)
+              ? target.selector
+              : [target.selector];
+        let text = '';
+        for (const s of selectors) {
+          if (s.type === 'TextQuoteSelector') { text = s.exact; break; }
+        }
+        historicalAnnotations.push({
+          rId,
+          annId: ann.id,
+          text,
+          entityTypes: matchedHistorical,
+        });
+      }
+    }
 
-  const proceed = await confirm(
-    `Proceed to match each cluster against existing HistoricalContext resources, synthesize new ones with Wikipedia citations where needed, and bind annotations?`,
-    true,
-  );
-  if (!proceed) {
-    console.log('Aborted.');
-    semiont.dispose();
-    closeInteractive();
-    return;
-  }
+    if (historicalAnnotations.length === 0) {
+      console.log(
+        'No historical-event annotations found. Run skills/mark-places-and-events/script.ts first.',
+      );
+      closeInteractive();
+      return;
+    }
 
-  let bound = 0;
-  let synthesized = 0;
+    // Cluster by canonical-name (lowercased text). Real disambiguation is the
+    // model's job via gather/match — this is a coarse first pass.
+    const clusters = new Map<string, AnnoRef[]>();
+    for (const a of historicalAnnotations) {
+      const key = a.text.toLowerCase().trim();
+      if (!clusters.has(key)) clusters.set(key, []);
+      clusters.get(key)!.push(a);
+    }
 
-  for (const [key, anns] of clusters) {
-    const sample = anns[0];
+    console.log(
+      `Found ${historicalAnnotations.length} historical-event annotations, ` +
+        `clustered into ${clusters.size} distinct events.`,
+    );
 
-    // Try to match against existing HistoricalContext resources
-    const gather = await semiont.gather.annotation(sample.annId, sample.rId, {
-      contextWindow: 1500,
-    });
-    const context = gather.response as GatheredContext;
+    const proceed = await confirm(
+      `Proceed to match each cluster against existing HistoricalContext resources, synthesize new ones with Wikipedia citations where needed, and bind annotations?`,
+      true,
+    );
+    if (!proceed) {
+      console.log('Aborted.');
+      closeInteractive();
+      return;
+    }
 
-    const matchResult = await semiont.match.search(sample.rId, sample.annId, context, {
-      limit: 5,
-      useSemanticScoring: true,
-    });
-    const top = matchResult.response[0];
+    let bound = 0;
+    let synthesized = 0;
 
-    let targetResourceId: string;
-    if (top && (top.score ?? 0) >= MATCH_THRESHOLD) {
-      targetResourceId = top['@id'];
-      console.log(`  ↪ "${sample.text}" → ${top.name} (existing, score ${top.score})`);
-    } else {
-      // Synthesize a new HistoricalContext resource
-      const wikiUrl = await wikipediaSearch(sample.text);
-      const externalRefs = wikiUrl
-        ? formatExternalReferences([{ term: sample.text, url: wikiUrl }])
-        : '';
-      const body =
-        `# ${sample.text}\n\n` +
-        `Historical context referenced in this corpus. Generated stub — replace with curated content as desired.\n\n` +
-        `**Type(s):** ${sample.entityTypes.join(', ')}\n\n` +
-        `Mentioned in ${anns.length} passage(s) across the corpus.\n\n` +
-        externalRefs;
+    for (const [, anns] of clusters) {
+      const sample = anns[0];
+      if (!sample) continue;
 
-      const { resourceId: newRId } = await semiont.yield.resource({
-        name: sample.text,
-        file: Buffer.from(body, 'utf-8'),
-        format: 'text/markdown',
-        entityTypes: ['HistoricalContext', ...sample.entityTypes],
-        storageUri: `file://generated/historical-${slugify(sample.text)}.md`,
+      // Try to match against existing HistoricalContext resources
+      const gather = await semiont.gather.annotation(sample.rId, sample.annId, {
+        contextWindow: 1500,
       });
-      targetResourceId = newRId as unknown as string;
-      synthesized++;
-      console.log(`  + "${sample.text}" → ${newRId} (synthesized${wikiUrl ? `, Wikipedia: ${wikiUrl}` : ''})`);
+      if (!('response' in gather)) continue;
+      const context = gather.response as GatheredContext;
+
+      const matchResult = await semiont.match.search(sample.rId, sample.annId, context, {
+        limit: 5,
+        useSemanticScoring: true,
+      });
+      const top = matchResult.response[0];
+
+      let targetResourceId: string;
+      if (top && (top.score ?? 0) >= MATCH_THRESHOLD) {
+        targetResourceId = top['@id'];
+        console.log(`  ↪ "${sample.text}" → ${top.name} (existing, score ${top.score})`);
+      } else {
+        // Synthesize a new HistoricalContext resource
+        const wikiUrl = await wikipediaSearch(sample.text);
+        const externalRefs = wikiUrl
+          ? formatExternalReferences([{ term: sample.text, url: wikiUrl }])
+          : '';
+        const body =
+          `# ${sample.text}\n\n` +
+          `Historical context referenced in this corpus. Generated stub — replace with curated content as desired.\n\n` +
+          `**Type(s):** ${sample.entityTypes.join(', ')}\n\n` +
+          `Mentioned in ${anns.length} passage(s) across the corpus.\n\n` +
+          externalRefs;
+
+        const { resourceId: newRId } = await semiont.yield.resource({
+          name: sample.text,
+          file: Buffer.from(body, 'utf-8'),
+          format: 'text/markdown',
+          entityTypes: ['HistoricalContext', ...sample.entityTypes],
+          storageUri: `file://generated/historical-${slugify(sample.text)}.md`,
+        });
+        targetResourceId = newRId;
+        synthesized++;
+        console.log(`  + "${sample.text}" → ${newRId} (synthesized${wikiUrl ? `, Wikipedia: ${wikiUrl}` : ''})`);
+      }
+
+      // Bind every annotation in this cluster to the resolved/synthesized resource
+      for (const a of anns) {
+        await semiont.bind.body(a.rId, a.annId, [
+          {
+            op: 'add',
+            item: { type: 'SpecificResource', source: targetResourceId, purpose: 'linking' },
+          },
+        ]);
+        bound++;
+      }
     }
 
-    // Bind every annotation in this cluster to the resolved/synthesized resource
-    for (const a of anns) {
-      await semiont.bind.body(a.rId, a.annId, [
-        {
-          op: 'add',
-          item: { type: 'SpecificResource', source: targetResourceId, purpose: 'linking' },
-        },
-      ]);
-      bound++;
-    }
+    console.log(
+      `\nDone. Bound ${bound} annotations across ${clusters.size} clusters; ${synthesized} new HistoricalContext resources synthesized.`,
+    );
+    closeInteractive();
+  } finally {
+    await session.dispose();
   }
-
-  console.log(
-    `\nDone. Bound ${bound} annotations across ${clusters.size} clusters; ${synthesized} new HistoricalContext resources synthesized.`,
-  );
-  semiont.dispose();
-  closeInteractive();
 }
 
 main().catch((e) => {

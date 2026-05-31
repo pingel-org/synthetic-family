@@ -16,7 +16,7 @@
  * Usage: tsx skills/build-life-and-times/script.ts <subjectResourceId> [--interactive]
  */
 
-import { SemiontClient, resourceId as ridBrand, type ResourceId } from '@semiont/sdk';
+import { SemiontSession, InMemorySessionStorage, type KnowledgeBase, resourceId as ridBrand, type ResourceDescriptor } from '@semiont/sdk';
 import { confirm, close as closeInteractive } from '../../src/interactive.js';
 
 function slugify(text: string): string {
@@ -51,134 +51,154 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  const semiont = await SemiontClient.signInHttp({
-    baseUrl: process.env.SEMIONT_API_URL ?? 'http://localhost:4000',
-    email: process.env.SEMIONT_USER_EMAIL!,
-    password: process.env.SEMIONT_USER_PASSWORD!,
-  });
+  const baseUrl = process.env.SEMIONT_API_URL ?? 'http://localhost:4000';
+  const email = process.env.SEMIONT_USER_EMAIL!;
+  const password = process.env.SEMIONT_USER_PASSWORD!;
+  const u = new URL(baseUrl);
+  const kb: KnowledgeBase = {
+    id: 'synthetic-family-build-life-and-times',
+    label: 'synthetic-family build-life-and-times',
+    email,
+    endpoint: { kind: 'http', host: u.hostname, port: Number(u.port) || 4000, protocol: u.protocol.replace(':', '') as 'http' | 'https' },
+  };
+  const session = await SemiontSession.signInHttp({ kb, storage: new InMemorySessionStorage(), baseUrl, email, password });
+  const semiont = session.client;
   const subjectRId = ridBrand(subjectResourceId);
 
-  let subject;
   try {
-    subject = await semiont.browse.resource(subjectRId);
-  } catch (e) {
-    console.error(`Failed to load subject resource ${subjectResourceId}:`, (e as Error).message);
-    semiont.dispose();
+    let subject: ResourceDescriptor;
+    try {
+      subject = await semiont.browse.resource(subjectRId);
+    } catch (e) {
+      console.error(`Failed to load subject resource ${subjectResourceId}:`, (e as Error).message);
+      closeInteractive();
+      return;
+    }
+
+    const subjectName = subject.name ?? subjectResourceId;
+    console.log(`Building Life and Times for: ${subjectName}`);
+
+    const annotations = await semiont.browse.annotations(subjectRId);
+
+    const items: DatedItem[] = [];
+    for (const ann of annotations) {
+      const target = ann.target;
+      const selectors =
+        typeof target === 'string' || !target.selector
+          ? []
+          : Array.isArray(target.selector)
+            ? target.selector
+            : [target.selector];
+      let text = '';
+      for (const s of selectors) {
+        if (s.type === 'TextQuoteSelector') { text = s.exact; break; }
+      }
+      const year = extractYear(text);
+
+      const bodies = Array.isArray(ann.body) ? ann.body : ann.body ? [ann.body] : [];
+
+      if (ann.motivation === 'linking') {
+        // Surface annotations bound to HistoricalContext, Place, or Theme resources
+        const boundResources = bodies
+          .filter((b: any) => b.type === 'SpecificResource')
+          .map((b: any) => b.source);
+        items.push({
+          year,
+          text,
+          motivation: 'linking',
+          boundResources,
+        });
+      } else if (ann.motivation === 'assessing') {
+        items.push({ year, text, motivation: 'assessing' });
+      } else if (ann.motivation === 'commenting') {
+        const commentary = bodies
+          .filter((b: any) => b.type === 'TextualBody' && (b.purpose === 'commenting' || !b.purpose))
+          .map((b: any) => (typeof b.value === 'string' ? b.value : ''))
+          .join(' ');
+        items.push({ year, text, motivation: 'commenting', commentary });
+      }
+    }
+
+    // Sort by year (undated to the end)
+    items.sort((a, b) => {
+      if (a.year === null && b.year === null) return 0;
+      if (a.year === null) return 1;
+      if (b.year === null) return -1;
+      return a.year - b.year;
+    });
+
+    console.log(`Collected ${items.length} relevant annotations on this Subject.`);
+    const proceed = await confirm(
+      `Proceed to compose and yield a LifeAndTimes resource for ${subjectName}?`,
+      true,
+    );
+    if (!proceed) {
+      console.log('Aborted.');
+      closeInteractive();
+      return;
+    }
+
+    // Compose the narrative. Per-year sections; within each, dated linking
+    // annotations come first (the life events themselves), then assessing
+    // (anchor flags) and commenting (historical exposition) annotations
+    // attached to the same period as bridging context.
+    const lines: string[] = [
+      `# Life and Times of ${subjectName}`,
+      '',
+      `Auto-generated narrative interleaving documented life events with surrounding historical context.`,
+      '',
+      `Source: ${subjectResourceId}`,
+      '',
+      '---',
+      '',
+    ];
+
+    let lastYear: number | null = -1;
+    for (const item of items) {
+      if (item.year !== lastYear) {
+        lines.push('');
+        lines.push(item.year !== null ? `## ${item.year}` : '## Undated');
+        lines.push('');
+        lastYear = item.year;
+      }
+      if (item.motivation === 'linking') {
+        const boundClause = item.boundResources && item.boundResources.length > 0
+          ? ` *(bound to ${item.boundResources.length} resource(s))*`
+          : '';
+        lines.push(`- **${item.text}**${boundClause}`);
+      } else if (item.motivation === 'assessing') {
+        lines.push(`  - 🚩 *Anchor*: ${item.text}`);
+      } else if (item.motivation === 'commenting' && item.commentary) {
+        lines.push(`  - 📝 *Context*: ${item.commentary}`);
+      }
+    }
+
+    lines.push('');
+    lines.push('---');
+    lines.push('');
+    lines.push('*This narrative was synthesized by the `build-life-and-times` skill.*');
+    lines.push(
+      '*🚩 marks indicate spans flagged by `assess-historical-anchors` as biography-meets-history inflection moments.*',
+    );
+    lines.push(
+      '*📝 marks indicate inline historical exposition added by `comment-life-context`.*',
+    );
+
+    const body = lines.join('\n') + '\n';
+
+    const { resourceId } = await semiont.yield.resource({
+      name: `Life and Times of ${subjectName}`,
+      file: Buffer.from(body, 'utf-8'),
+      format: 'text/markdown',
+      entityTypes: ['LifeAndTimes', 'Aggregate'],
+      storageUri: `file://generated/lifeandtimes-${slugify(subjectName)}.md`,
+    });
+
+    console.log(`\nLifeAndTimes resource created: ${resourceId} (${body.length} bytes)`);
     closeInteractive();
-    return;
+  } finally {
+    await session.dispose();
   }
-
-  const subjectName = (subject as any)?.name ?? subjectResourceId;
-  console.log(`Building Life and Times for: ${subjectName}`);
-
-  const annotations = await semiont.browse.annotations(subjectRId);
-
-  const items: DatedItem[] = [];
-  for (const ann of annotations) {
-    const text = ann.target?.selector?.exact ?? '';
-    const year = extractYear(text);
-
-    if (ann.motivation === 'linking') {
-      // Surface annotations bound to HistoricalContext, Place, or Theme resources
-      const boundResources = (ann.body ?? [])
-        .filter((b: any) => b.type === 'SpecificResource')
-        .map((b: any) => b.source);
-      items.push({
-        year,
-        text,
-        motivation: 'linking',
-        boundResources,
-      });
-    } else if (ann.motivation === 'assessing') {
-      items.push({ year, text, motivation: 'assessing' });
-    } else if (ann.motivation === 'commenting') {
-      const commentary = (ann.body ?? [])
-        .filter((b: any) => b.type === 'TextualBody' && (b.purpose === 'commenting' || !b.purpose))
-        .map((b: any) => (typeof b.value === 'string' ? b.value : ''))
-        .join(' ');
-      items.push({ year, text, motivation: 'commenting', commentary });
-    }
-  }
-
-  // Sort by year (undated to the end)
-  items.sort((a, b) => {
-    if (a.year === null && b.year === null) return 0;
-    if (a.year === null) return 1;
-    if (b.year === null) return -1;
-    return a.year - b.year;
-  });
-
-  console.log(`Collected ${items.length} relevant annotations on this Subject.`);
-  const proceed = await confirm(
-    `Proceed to compose and yield a LifeAndTimes resource for ${subjectName}?`,
-    true,
-  );
-  if (!proceed) {
-    console.log('Aborted.');
-    semiont.dispose();
-    closeInteractive();
-    return;
-  }
-
-  // Compose the narrative. Per-year sections; within each, dated linking
-  // annotations come first (the life events themselves), then assessing
-  // (anchor flags) and commenting (historical exposition) annotations
-  // attached to the same period as bridging context.
-  const lines: string[] = [
-    `# Life and Times of ${subjectName}`,
-    '',
-    `Auto-generated narrative interleaving documented life events with surrounding historical context.`,
-    '',
-    `Source: ${subjectResourceId}`,
-    '',
-    '---',
-    '',
-  ];
-
-  let lastYear: number | null = -1;
-  for (const item of items) {
-    if (item.year !== lastYear) {
-      lines.push('');
-      lines.push(item.year !== null ? `## ${item.year}` : '## Undated');
-      lines.push('');
-      lastYear = item.year;
-    }
-    if (item.motivation === 'linking') {
-      const boundClause = item.boundResources && item.boundResources.length > 0
-        ? ` *(bound to ${item.boundResources.length} resource(s))*`
-        : '';
-      lines.push(`- **${item.text}**${boundClause}`);
-    } else if (item.motivation === 'assessing') {
-      lines.push(`  - 🚩 *Anchor*: ${item.text}`);
-    } else if (item.motivation === 'commenting' && item.commentary) {
-      lines.push(`  - 📝 *Context*: ${item.commentary}`);
-    }
-  }
-
-  lines.push('');
-  lines.push('---');
-  lines.push('');
-  lines.push('*This narrative was synthesized by the `build-life-and-times` skill.*');
-  lines.push(
-    '*🚩 marks indicate spans flagged by `assess-historical-anchors` as biography-meets-history inflection moments.*',
-  );
-  lines.push(
-    '*📝 marks indicate inline historical exposition added by `comment-life-context`.*',
-  );
-
-  const body = lines.join('\n') + '\n';
-
-  const { resourceId } = await semiont.yield.resource({
-    name: `Life and Times of ${subjectName}`,
-    file: Buffer.from(body, 'utf-8'),
-    format: 'text/markdown',
-    entityTypes: ['LifeAndTimes', 'Aggregate'],
-    storageUri: `file://generated/lifeandtimes-${slugify(subjectName)}.md`,
-  });
-
-  console.log(`\nLifeAndTimes resource created: ${resourceId} (${body.length} bytes)`);
-  semiont.dispose();
-  closeInteractive();
 }
 
 main().catch((e) => {

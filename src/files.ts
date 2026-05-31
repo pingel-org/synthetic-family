@@ -141,6 +141,7 @@ export function discoverCorpus(
     const dirPath = join(repoRoot, dirName);
     if (!existsSync(dirPath)) continue;
     const rule = config.dirs[dirName];
+    if (!rule) continue;
 
     walkDir(dirPath, repoRoot, (absPath) => {
       const filename = absPath.slice(absPath.lastIndexOf('/') + 1);

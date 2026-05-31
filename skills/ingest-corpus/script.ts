@@ -8,7 +8,7 @@
  * Usage: tsx skills/ingest-corpus/script.ts [--interactive]
  */
 
-import { SemiontClient } from '@semiont/sdk';
+import { SemiontSession, InMemorySessionStorage, type KnowledgeBase } from '@semiont/sdk';
 import { discoverCorpus, readForUpload, type CorpusFile } from '../../src/files.js';
 import { confirm, close as closeInteractive, isInteractive } from '../../src/interactive.js';
 
@@ -102,39 +102,49 @@ async function main(): Promise<void> {
     return;
   }
 
-  const semiont = await SemiontClient.signInHttp({
-    baseUrl: process.env.SEMIONT_API_URL ?? 'http://localhost:4000',
-    email: process.env.SEMIONT_USER_EMAIL!,
-    password: process.env.SEMIONT_USER_PASSWORD!,
-  });
+  const baseUrl = process.env.SEMIONT_API_URL ?? 'http://localhost:4000';
+  const email = process.env.SEMIONT_USER_EMAIL!;
+  const password = process.env.SEMIONT_USER_PASSWORD!;
+  const u = new URL(baseUrl);
+  const kb: KnowledgeBase = {
+    id: 'synthetic-family-ingest-corpus',
+    label: 'synthetic-family ingest-corpus',
+    email,
+    endpoint: { kind: 'http', host: u.hostname, port: Number(u.port) || 4000, protocol: u.protocol.replace(':', '') as 'http' | 'https' },
+  };
+  const session = await SemiontSession.signInHttp({ kb, storage: new InMemorySessionStorage(), baseUrl, email, password });
+  const semiont = session.client;
 
-  // Declare this KB's entity-type vocabulary via frame. Idempotent.
-  console.log(`Declaring ${KB_ENTITY_TYPES.length} entity types via frame...`);
-  await semiont.frame.addEntityTypes(KB_ENTITY_TYPES);
+  try {
+    // Declare this KB's entity-type vocabulary via frame. Idempotent.
+    console.log(`Declaring ${KB_ENTITY_TYPES.length} entity types via frame...`);
+    await semiont.frame.addEntityTypes(KB_ENTITY_TYPES);
 
-  let created = 0;
-  let failed = 0;
-  for (const file of files) {
-    try {
-      const buffer = readForUpload(file, repoRoot);
-      const { resourceId } = await semiont.yield.resource({
-        name: file.name,
-        file: buffer,
-        format: file.format,
-        entityTypes: file.entityTypes,
-        storageUri: file.storageUri,
-      });
-      created++;
-      console.log(`  + ${file.path} → ${resourceId} [${file.entityTypes.join(', ')}]`);
-    } catch (e) {
-      failed++;
-      console.warn(`  ! ${file.path} failed: ${(e as Error).message}`);
+    let created = 0;
+    let failed = 0;
+    for (const file of files) {
+      try {
+        const buffer = readForUpload(file, repoRoot);
+        const { resourceId } = await semiont.yield.resource({
+          name: file.name,
+          file: buffer,
+          format: file.format,
+          entityTypes: file.entityTypes,
+          storageUri: file.storageUri,
+        });
+        created++;
+        console.log(`  + ${file.path} → ${resourceId} [${file.entityTypes.join(', ')}]`);
+      } catch (e) {
+        failed++;
+        console.warn(`  ! ${file.path} failed: ${(e as Error).message}`);
+      }
     }
-  }
 
-  console.log(`\nDone. ${created} resources created, ${failed} failed.`);
-  semiont.dispose();
-  closeInteractive();
+    console.log(`\nDone. ${created} resources created, ${failed} failed.`);
+    closeInteractive();
+  } finally {
+    await session.dispose();
+  }
 }
 
 main().catch((e) => {
