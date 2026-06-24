@@ -129,9 +129,8 @@ async function main(): Promise<void> {
 
     let bound = 0;
     let synthesized = 0;
-    const personResourceIds = new Map<string, string>(); // cluster-key → person resourceId
 
-    for (const [key, anns] of clusters) {
+    for (const [, anns] of clusters) {
       const sample = anns[0];
       if (!sample) continue;
 
@@ -199,8 +198,6 @@ async function main(): Promise<void> {
         synthesized++;
         console.log(`  + "${sample.text}" → ${newRId} (synthesized, refs: ${refs.length})`);
       }
-
-      personResourceIds.set(key, targetResourceId);
 
       for (const a of anns) {
         await semiont.bind.body(a.rId, a.annId, [
