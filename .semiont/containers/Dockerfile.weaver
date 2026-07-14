@@ -2,8 +2,12 @@ FROM node:24-alpine
 
 RUN apk add --no-cache curl
 ARG NPM_REGISTRY=https://registry.npmjs.org
+# neo4j-driver is a lazy peer of @semiont/graph (loaded at connect time,
+# per graph sink) — the weaver is the one make-meaning entry point that
+# actually dials the graph, so it must be installed here explicitly, the
+# same way Dockerfile.backend does.
 RUN npm config set registry $NPM_REGISTRY && \
-    npm install -g @semiont/make-meaning && \
+    npm install -g @semiont/make-meaning neo4j-driver && \
     npm cache clean --force
 
 RUN addgroup --system --gid 1001 nodejs && \
