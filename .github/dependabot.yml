@@ -8,14 +8,6 @@ updates:
       actions:
         patterns: ["*"]
 
-  - package-ecosystem: docker
-    directory: /.semiont/containers
-    schedule:
-      interval: weekly
-    groups:
-      base-images:
-        patterns: ["*"]
-
   - package-ecosystem: npm
     directory: /
     schedule:
