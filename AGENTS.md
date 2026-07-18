@@ -105,7 +105,7 @@ For a corpus from a different period (e.g., a 20th-century immigration archive o
 
 ## Working in containers — do not install npm packages on the host
 
-This template assumes a containerized workflow. The backend stack runs in containers (`.semiont/scripts/start.sh` brings it up); the skills run in containers too. There is **no need** to install Node, the SDK, or any other tooling on the host machine.
+This template assumes a containerized workflow. The backend stack runs in containers (`semiont start` brings it up); the skills run in containers too. There is **no need** to install Node, the SDK, or any other tooling on the host machine.
 
 Each skill's `SKILL.md` shows a `container run` invocation that:
 
@@ -119,10 +119,11 @@ Apple Container, Docker, and Podman all accept the same `run --rm -v ... -w ... 
 
 Before running any skill, the Semiont backend stack must be up. Two paths:
 
-### Local: `start.sh`
+### Local: `semiont start`
 
 ```bash
-.semiont/scripts/start.sh --email admin@example.com --password password --observe
+brew install the-ai-alliance/semiont/semiont   # once
+semiont start --email admin@example.com --password password
 ```
 
 Flags: `--email` / `--password` to seed an admin user, `--observe` to start a Jaeger sidecar (traces at http://localhost:16686), `--config anthropic` to use cloud inference (requires `ANTHROPIC_API_KEY`), `--no-cache` to force a fresh image build. `--help` lists all options.
