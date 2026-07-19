@@ -54,7 +54,7 @@ container run --rm -v "$(pwd):/work" -w /work \
 
 Run with `-it` (interactive TTY) and add `-e SEMIONT_INTERACTIVE=1` to enable the tier-3 confirm prompt.
 
-**Why the `HOST_ADDR` discovery probe:** `localhost` from inside a freshly-spawned container is its own loopback, not the host's. `start.sh` uses the same trick to let backend containers find their data services. Substitute `docker run` or `podman run` for `container run` if those are your runtimes.
+**Why the `HOST_ADDR` discovery probe:** `localhost` from inside a freshly-spawned container is its own loopback, not the host's. `semiont start` uses the same trick to let backend containers find their data services. Substitute `docker run` or `podman run` for `container run` if those are your runtimes.
 
 For Docker Desktop / Podman on macOS, replace the `HOST_ADDR` probe with `SEMIONT_API_URL=http://host.docker.internal:4000`. For Linux Docker, `--network host` + `SEMIONT_API_URL=http://localhost:4000` works.
 
