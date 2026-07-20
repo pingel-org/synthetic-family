@@ -131,7 +131,7 @@ Flags: `--config anthropic` for cloud inference (requires `ANTHROPIC_API_KEY`), 
 
 ### Codespaces
 
-Open the repo in a Codespace — `post-create.sh` builds the stack, `post-start.sh` brings it up, admin credentials are auto-generated into `.devcontainer/admin.json`. Print them any time:
+Open the repo in a Codespace — `post-create.sh` pulls the stack's images, `post-start.sh` brings it up, admin credentials are auto-generated into `.devcontainer/admin.json`. Print them any time:
 
 ```bash
 cat .devcontainer/admin.json
