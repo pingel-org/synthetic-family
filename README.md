@@ -59,14 +59,15 @@ Create the codespace on a premium machine for more headroom during first-time se
 gh codespace create --repo pingel-org/synthetic-family --machine premiumLinux
 ```
 
-Forward the browser and backend ports to your local machine, then fetch the auto-generated admin credentials:
+Forward the browser and backend ports to your local machine, then create the first admin (nothing creates one for you — `--generate-password` prints a random one once):
 
 ```bash
 gh codespace ports forward 3000:3000 4000:4000
-gh codespace ssh -- cat .devcontainer/admin.json
+gh codespace ssh -- 'cd /workspaces/* && docker compose -f .semiont/compose/backend.yml \
+  exec -T backend semiont-useradd --email you@example.com --generate-password --admin'
 ```
 
-Then open **http://localhost:3000** and sign in with those credentials.
+Then open **http://localhost:3000** and sign in as the admin you just created.
 
 ## License
 
