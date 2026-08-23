@@ -100,8 +100,7 @@ async function main(): Promise<void> {
       if (ann.motivation === 'linking') {
         // Surface annotations bound to HistoricalContext, Place, or Theme resources
         const boundResources = bodies
-          .filter((b: any) => b.type === 'SpecificResource')
-          .map((b: any) => b.source);
+          .flatMap((b) => (b.type === 'SpecificResource' ? [b.source] : []));
         items.push({
           year,
           text,
@@ -111,9 +110,13 @@ async function main(): Promise<void> {
       } else if (ann.motivation === 'assessing') {
         items.push({ year, text, motivation: 'assessing' });
       } else if (ann.motivation === 'commenting') {
+        // One flatMap so the guard narrows `b` to TextualBody and `.value` is typed.
         const commentary = bodies
-          .filter((b: any) => b.type === 'TextualBody' && (b.purpose === 'commenting' || !b.purpose))
-          .map((b: any) => (typeof b.value === 'string' ? b.value : ''))
+          .flatMap((b) =>
+            b.type === 'TextualBody' && (b.purpose === 'commenting' || !b.purpose)
+              ? [typeof b.value === 'string' ? b.value : '']
+              : [],
+          )
           .join(' ');
         items.push({ year, text, motivation: 'commenting', commentary });
       }

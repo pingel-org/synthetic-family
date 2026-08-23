@@ -107,15 +107,18 @@ async function main(): Promise<void> {
         if (ann.motivation !== 'linking') continue;
         const bodies = Array.isArray(ann.body) ? ann.body : ann.body ? [ann.body] : [];
         const tagValues = bodies
-          .filter((b: any) => b.type === 'TextualBody' && b.purpose === 'tagging')
-          .flatMap((b: any) => (Array.isArray(b.value) ? b.value : [b.value]))
+          .flatMap((b) =>
+            b.type === 'TextualBody' && b.purpose === 'tagging'
+              ? (Array.isArray(b.value) ? b.value : [b.value])
+              : [],
+          )
           // Keep only the discovered theme labels — drop the umbrella 'Theme' entity-type tag.
           .filter((v: string) => v && v !== UMBRELLA_THEME_TAG);
 
         // Only annotations that *also* carry the umbrella 'Theme' tag are theme spans
         // (this filters out other linking annotations the corpus may have).
         const carriesUmbrella = bodies.some(
-          (b: any) =>
+          (b) =>
             b.type === 'TextualBody' &&
             b.purpose === 'tagging' &&
             (Array.isArray(b.value) ? b.value : [b.value]).includes(UMBRELLA_THEME_TAG),
