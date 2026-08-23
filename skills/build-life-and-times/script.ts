@@ -16,7 +16,7 @@
  * Usage: tsx skills/build-life-and-times/script.ts <subjectResourceId> [--interactive]
  */
 
-import { SemiontSession, InMemorySessionStorage, type KnowledgeBase, resourceId as ridBrand, type ResourceDescriptor } from '@semiont/sdk';
+import { SemiontSession, InMemorySessionStorage, type KbTarget, resourceId as ridBrand, type ResourceDescriptor } from '@semiont/sdk';
 import { confirm, close as closeInteractive } from '../../src/interactive.js';
 
 function slugify(text: string): string {
@@ -55,7 +55,7 @@ async function main(): Promise<void> {
   const email = process.env.SEMIONT_USER_EMAIL!;
   const password = process.env.SEMIONT_USER_PASSWORD!;
   const u = new URL(baseUrl);
-  const kb: KnowledgeBase = {
+  const kb: KbTarget = {
     id: 'synthetic-family-build-life-and-times',
     label: 'synthetic-family build-life-and-times',
     email,
@@ -68,7 +68,7 @@ async function main(): Promise<void> {
   try {
     let subject: ResourceDescriptor;
     try {
-      subject = await semiont.browse.resource(subjectRId);
+      subject = await semiont.browse.resource(subjectRId).fresh();
     } catch (e) {
       console.error(`Failed to load subject resource ${subjectResourceId}:`, (e as Error).message);
       closeInteractive();
@@ -78,7 +78,7 @@ async function main(): Promise<void> {
     const subjectName = subject.name ?? subjectResourceId;
     console.log(`Building Life and Times for: ${subjectName}`);
 
-    const annotations = await semiont.browse.annotations(subjectRId);
+    const annotations = await semiont.browse.annotations(subjectRId).fresh();
 
     const items: DatedItem[] = [];
     for (const ann of annotations) {
