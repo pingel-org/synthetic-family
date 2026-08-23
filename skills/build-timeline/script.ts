@@ -8,7 +8,7 @@
  * Usage: tsx skills/build-timeline/script.ts [--interactive]
  */
 
-import { SemiontSession, InMemorySessionStorage, type KnowledgeBase, resourceId as ridBrand, type ResourceId } from '@semiont/sdk';
+import { SemiontSession, InMemorySessionStorage, type KbTarget, resourceId as ridBrand, type ResourceId } from '@semiont/sdk';
 import { confirm, close as closeInteractive } from '../../src/interactive.js';
 
 const DATE_TYPES = new Set(['Date', 'Year', 'DateRange', 'LifeEvent']);
@@ -36,7 +36,7 @@ async function main(): Promise<void> {
   const email = process.env.SEMIONT_USER_EMAIL!;
   const password = process.env.SEMIONT_USER_PASSWORD!;
   const u = new URL(baseUrl);
-  const kb: KnowledgeBase = {
+  const kb: KbTarget = {
     id: 'synthetic-family-build-timeline',
     label: 'synthetic-family build-timeline',
     email,
@@ -46,7 +46,7 @@ async function main(): Promise<void> {
   const semiont = session.client;
 
   try {
-    const all = await semiont.browse.resources({ limit: 1000 });
+    const all = (await semiont.browse.resources({ limit: 1000 }).fresh()).resources;
     const bioResources = all.filter((r) =>
       (r.entityTypes ?? []).some(
         (t) => t === 'Biography' || t === 'Subject' || t === 'Letter' || t === 'Diary' || t === 'Memoir',
@@ -62,7 +62,7 @@ async function main(): Promise<void> {
     const entries: TimelineEntry[] = [];
     for (const r of bioResources) {
       const rId = ridBrand(r['@id']);
-      const annotations = await semiont.browse.annotations(rId);
+      const annotations = await semiont.browse.annotations(rId).fresh();
       for (const ann of annotations) {
         if (ann.motivation !== 'linking') continue;
         const bodies = Array.isArray(ann.body) ? ann.body : ann.body ? [ann.body] : [];
