@@ -26,8 +26,8 @@ If you're an AI assistant working in this repo, this file is your orientation. T
 | [`assess-historical-anchors`](skills/assess-historical-anchors/) | Flag biography-meets-history inflection moments | `mark.assist` (assessing) |
 | [`comment-life-context`](skills/comment-life-context/) | Add inline historical exposition | `mark.assist` (commenting) |
 | [`build-historical-context`](skills/build-historical-context/) | Synthesize HistoricalContext resources with Wikipedia citations | `+ yield.resource`, `bind.body` |
-| [`build-place-articles`](skills/build-place-articles/) | Promote Place mentions to canonical Place resources with Wikipedia + Find a Grave URLs | `+ yield.fromAnnotation` |
-| [`map-relationships`](skills/map-relationships/) | Promote Person mentions to Person resources, encode kinship & relationships, attach Find a Grave search URLs | `+ yield.fromAnnotation`, `bind.body` |
+| [`build-place-articles`](skills/build-place-articles/) | Promote Place mentions to canonical Place resources with Wikipedia + Find a Grave URLs | `+ yield.fromContext` |
+| [`map-relationships`](skills/map-relationships/) | Promote Person mentions to Person resources, encode kinship & relationships, attach Find a Grave search URLs | `+ yield.fromContext`, `bind.body` |
 | [`build-timeline`](skills/build-timeline/) | Synthesize a unified chronological Timeline resource | `+ yield.resource` |
 | [`extract-period-themes`](skills/extract-period-themes/) | Tag and synthesize Theme resources for recurring period concerns | `mark.assist` (tagging) |
 | [`build-life-and-times`](skills/build-life-and-times/) | Per-Subject narrative synthesis interleaving life events with historical backdrop | full pipeline composition |
