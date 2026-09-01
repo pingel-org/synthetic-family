@@ -16,7 +16,7 @@ If you're an AI assistant working in this repo, this file is your orientation. T
   - `src/wikipedia.ts` — Wikipedia URL lookups + "External references" formatting (cached locally to `.cache/wikipedia/`)
   - `src/findagrave.ts` — Find a Grave search URL builder, memorial-URL extraction
   - `src/interactive.ts` — `confirm` / `pick` / `preview` helpers for tier-3 interactive checkpoints
-- **`skills/`** — eleven skills, each shipping a `SKILL.md` (orientation + frontmatter for skill-aware tools like Claude Code) plus a `script.ts` that uses `@semiont/sdk` against the running backend.
+- **`skills/`** — eleven skills, each shipping a `SKILL.md` (orientation + frontmatter for skill-aware tools like Claude Code) plus a `script.ts` that uses `@semiont/sdk` against the running stack.
 
 | Skill | What it does | New SDK verbs |
 |---|---|---|
@@ -105,19 +105,19 @@ For a corpus from a different period (e.g., a 20th-century immigration archive o
 
 ## Working in containers — do not install npm packages on the host
 
-This template assumes a containerized workflow. The backend stack runs in containers (`semiont start` brings it up); the skills run in containers too. There is **no need** to install Node, the SDK, or any other tooling on the host machine.
+This template assumes a containerized workflow. The stack runs in containers (`semiont start` brings it up); the skills run in containers too. There is **no need** to install Node, the SDK, or any other tooling on the host machine.
 
 Each skill's `SKILL.md` shows a `container run` invocation that:
 
 1. Mounts the repo as `/work` inside a throwaway `node:24-alpine` container.
 2. Installs `@semiont/sdk` and `tsx` *inside* the container.
-3. Runs the skill's `script.ts` against the env-configured backend.
+3. Runs the skill's `script.ts` against the env-configured stack.
 
 Apple Container, Docker, and Podman all accept the same `run --rm -v ... -w ... <image> <cmd>` form. The skills show `container run` (Apple's CLI); substitute `docker run` or `podman run` as needed. See [`skills/ingest-corpus/SKILL.md`](skills/ingest-corpus/SKILL.md) for the full networking discussion (the `HOST_ADDR` discovery probe).
 
-## Backend setup
+## Stack setup
 
-Before running any skill, the Semiont backend stack must be up. Two paths:
+Before running any skill, the Semiont stack must be up. Two paths:
 
 ### Local: `semiont start`
 
@@ -139,11 +139,11 @@ Flags: `--config anthropic` for cloud inference (requires `ANTHROPIC_API_KEY`), 
 Open the repo in a Codespace — `post-create.sh` pulls the stack's images, `post-start.sh` brings it up. No account is created — make the first admin (it prints a random password once):
 
 ```bash
-docker compose -f .semiont/compose/backend.yml exec backend \
+docker compose -f .semiont/compose/backend.yml exec gateway \
   semiont-useradd --email you@example.com --generate-password --admin
 ```
 
-To reach the backend from your local Semiont browser:
+To reach the gateway from your local Semiont browser:
 
 ```bash
 gh codespace ports forward 4000:4000
@@ -159,7 +159,7 @@ Skills are parameterized in three tiers.
 
 | Var | Purpose |
 |---|---|
-| `SEMIONT_API_URL` | Backend URL (default `http://localhost:4000`) |
+| `SEMIONT_API_URL` | Gateway URL (default `http://localhost:4000`) |
 | `SEMIONT_USER_EMAIL` | Authenticating user |
 | `SEMIONT_USER_PASSWORD` | Authenticating user's password |
 

@@ -37,7 +37,7 @@ Before the run: prints the resource count and target list, then `confirm`s.
 
 ## Run it
 
-**Prerequisite: `ingest-corpus` has been run.** See [AGENTS.md › Backend setup](../../AGENTS.md#backend-setup).
+**Prerequisite: `ingest-corpus` has been run.** See [AGENTS.md › Stack setup](../../AGENTS.md#stack-setup).
 
 ```bash
 HOST_ADDR=$(container run --rm node:24-alpine sh -c "ip route | awk '/default/{print \$3}'" 2>/dev/null | tr -d '[:space:]')
