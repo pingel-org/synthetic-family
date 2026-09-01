@@ -51,7 +51,7 @@ This repo follows the same layout and startup flow as [`semiont-template-kb`](ht
 
 Install the [GitHub CLI (`gh`)](https://cli.github.com/) if you haven't already.
 
-> **Before creating:** add `ANTHROPIC_API_KEY` as a [user secret](https://github.com/settings/codespaces) with this repo selected. Otherwise the backend comes up but inference is non-functional until you add the secret and rebuild the container.
+> **Before creating:** add `ANTHROPIC_API_KEY` as a [user secret](https://github.com/settings/codespaces) with this repo selected. Otherwise the stack comes up but inference is non-functional until you add the secret and rebuild the container.
 
 Create the codespace on a premium machine for more headroom during first-time setup:
 
@@ -59,12 +59,12 @@ Create the codespace on a premium machine for more headroom during first-time se
 gh codespace create --repo pingel-org/synthetic-family --machine premiumLinux
 ```
 
-Forward the browser and backend ports to your local machine, then create the first admin (nothing creates one for you — `--generate-password` prints a random one once):
+Forward the Browser and Gateway ports to your local machine, then create the first admin (nothing creates one for you — `--generate-password` prints a random one once):
 
 ```bash
 gh codespace ports forward 3000:3000 4000:4000
 gh codespace ssh -- 'cd /workspaces/* && docker compose -f .semiont/compose/backend.yml \
-  exec -T backend semiont-useradd --email you@example.com --generate-password --admin'
+  exec -T gateway semiont-useradd --email you@example.com --generate-password --admin'
 ```
 
 Then open **http://localhost:3000** and sign in as the admin you just created.

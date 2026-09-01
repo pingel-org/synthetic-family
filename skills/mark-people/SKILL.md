@@ -34,7 +34,7 @@ Before the run: prints the resource count, target list, and entity-type list, th
 
 ## Run it
 
-**Prerequisite: `ingest-corpus` has been run.** See [AGENTS.md › Backend setup](../../AGENTS.md#backend-setup) for backend startup.
+**Prerequisite: `ingest-corpus` has been run.** See [AGENTS.md › Stack setup](../../AGENTS.md#stack-setup) for stack startup.
 
 ```bash
 HOST_ADDR=$(container run --rm node:24-alpine sh -c "ip route | awk '/default/{print \$3}'" 2>/dev/null | tr -d '[:space:]')
