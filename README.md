@@ -63,8 +63,8 @@ Forward the Browser and Gateway ports to your local machine, then create the fir
 
 ```bash
 gh codespace ports forward 3000:3000 4000:4000
-gh codespace ssh -- 'cd /workspaces/* && docker compose -f .semiont/compose/backend.yml \
-  exec -T gateway semiont-useradd --email you@example.com --generate-password --admin'
+semiont useradd --repo pingel-org/synthetic-family \
+  --email you@example.com --generate-password
 ```
 
 Then open **http://localhost:3000** and sign in as the admin you just created.
