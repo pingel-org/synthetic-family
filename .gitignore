@@ -4,3 +4,4 @@
 node_modules
 .npmrc
 .devcontainer/.staged-config.toml
+.devcontainer/.staged-realm.json
