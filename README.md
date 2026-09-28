@@ -59,10 +59,10 @@ Create the codespace on a premium machine for more headroom during first-time se
 gh codespace create --repo pingel-org/synthetic-family --machine premiumLinux
 ```
 
-Forward the Browser and Gateway ports to your local machine, then create the first admin (nothing creates one for you — `--generate-password` prints a random one once):
+Forward the Browser, Gateway and Keycloak ports to your local machine, then create the first admin (nothing creates one for you — `--generate-password` prints a random one once):
 
 ```bash
-gh codespace ports forward 3000:3000 4000:4000
+gh codespace ports forward 3000:3000 4000:4000 8080:8080
 semiont useradd --repo pingel-org/synthetic-family \
   --email you@example.com --generate-password
 ```
