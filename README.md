@@ -59,15 +59,19 @@ Create the codespace on a premium machine for more headroom during first-time se
 gh codespace create --repo pingel-org/synthetic-family --machine premiumLinux
 ```
 
-Forward the Browser, Gateway and Keycloak ports to your local machine, then create the first admin (nothing creates one for you — `--generate-password` prints a random one once):
+Forward the Browser, Gateway and Keycloak ports to your local machine and leave it running; `gh codespace create` printed the codespace's name, and `gh codespace list` shows it:
 
 ```bash
-gh codespace ports forward 3000:3000 4000:4000 8080:8080
-semiont useradd --repo pingel-org/synthetic-family \
-  --email you@example.com --generate-password
+gh codespace ports forward 3000:3000 4000:4000 8080:8080 -c <codespace>
 ```
 
-Then open **http://localhost:3000** and sign in as the admin you just created.
+Nothing creates the first account for you. In another terminal, create it with Keycloak's own admin tool inside the codespace; it prompts for the password:
+
+```bash
+gh codespace ssh -c <codespace> -- -t "docker exec -it semiont-keycloak bash -c 'K=/opt/keycloak/bin/kcadm.sh; \$K config credentials --server http://localhost:8080 --realm master --user admin --password \"\$KC_BOOTSTRAP_ADMIN_PASSWORD\" && \$K create users -r semiont -s username=<email> -s email=<email> -s emailVerified=true -s enabled=true && \$K set-password -r semiont --username <email>'"
+```
+
+Then open **http://localhost:3000**, add the KB in the **Knowledge Bases** panel with Host `localhost` and Port `4000`, and **Connect**: sign in at Keycloak with the email and password you just set, and give your name the first time.
 
 ## License
 
