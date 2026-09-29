@@ -136,20 +136,13 @@ Flags: `--config anthropic` for cloud inference (requires `ANTHROPIC_API_KEY`), 
 
 ### Codespaces
 
-Open the repo in a Codespace — `post-create.sh` pulls the stack's images, `post-start.sh` brings it up. No account is created — make the first admin (it prints a random password once):
+From your machine, `semiont start --runtime codespace --repo pingel-org/synthetic-family` creates or resumes the codespace, waits for the stack (which the codespace's own launcher runs), and forwards the KB (4000) and its Keycloak (8080), or the next free ports it prints. No account is created — make the first one; it prompts for the password:
 
 ```bash
-docker compose -f .semiont/compose/backend.yml exec gateway \
-  semiont-useradd --email you@example.com --generate-password --admin
+semiont useradd --repo pingel-org/synthetic-family --email you@example.com
 ```
 
-To reach the gateway from your local Semiont browser:
-
-```bash
-gh codespace ports forward 4000:4000
-```
-
-(If `gh` rejects this with `must have admin rights to Repository`, run `gh auth refresh -h github.com -s codespace` once.)
+`semiont stop --repo pingel-org/synthetic-family` stops the codespace; add `--delete` to destroy it.
 
 ## Parameterization and interactivity
 

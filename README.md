@@ -65,10 +65,10 @@ Forward the Browser, Gateway and Keycloak ports to your local machine and leave 
 gh codespace ports forward 3000:3000 4000:4000 8080:8080 -c <codespace>
 ```
 
-Nothing creates the first account for you. In another terminal, create it with Keycloak's own admin tool inside the codespace; it prompts for the password:
+Nothing creates the first account for you. The codespace brings the stack up by itself; in another terminal, create the account inside it, which prompts for the password:
 
 ```bash
-gh codespace ssh -c <codespace> -- -t "docker exec -it semiont-keycloak bash -c 'K=/opt/keycloak/bin/kcadm.sh; \$K config credentials --server http://localhost:8080 --realm master --user admin --password \"\$KC_BOOTSTRAP_ADMIN_PASSWORD\" && \$K create users -r semiont -s username=<email> -s email=<email> -s emailVerified=true -s enabled=true && \$K set-password -r semiont --username <email>'"
+gh codespace ssh -c <codespace> -- -t 'cd /workspaces/* && semiont useradd --email you@example.com'
 ```
 
 Then open **http://localhost:3000**, add the KB in the **Knowledge Bases** panel with Host `localhost` and Port `4000`, and **Connect**: sign in at Keycloak with the email and password you just set, and give your name the first time.
