@@ -8,7 +8,7 @@
  * Usage: tsx skills/ingest-corpus/script.ts [--interactive]
  */
 
-import { SemiontSession, InMemorySessionStorage, type KbTarget } from '@semiont/sdk';
+import { SemiontSession, InMemorySessionStorage, httpKb } from '@semiont/sdk';
 import { discoverCorpus, readForUpload, type CorpusFile } from '../../src/files.js';
 import { confirm, close as closeInteractive, isInteractive } from '../../src/interactive.js';
 
@@ -17,7 +17,7 @@ import { confirm, close as closeInteractive, isInteractive } from '../../src/int
  * Declared via `frame.addEntityTypes` once on each ingest run — idempotent,
  * so re-runs are harmless. This is what makes `browse.entityTypes()` return
  * a coherent published vocabulary instead of an implicit accumulation of
- * whatever any individual mark.assist call happened to stamp.
+ * whatever any individual mark.delegate call happened to stamp.
  */
 const KB_ENTITY_TYPES = [
   // Source-document types from src/files.ts
@@ -102,17 +102,21 @@ async function main(): Promise<void> {
     return;
   }
 
-  const baseUrl = process.env.SEMIONT_API_URL ?? 'http://localhost:4000';
-  const email = process.env.SEMIONT_USER_EMAIL!;
-  const password = process.env.SEMIONT_USER_PASSWORD!;
-  const u = new URL(baseUrl);
-  const kb: KbTarget = {
-    id: 'synthetic-family-ingest-corpus',
-    label: 'synthetic-family ingest-corpus',
-    email,
-    endpoint: { kind: 'http', host: u.hostname, port: Number(u.port) || 4000, protocol: u.protocol.replace(':', '') as 'http' | 'https' },
-  };
-  const session = await SemiontSession.signInHttp({ kb, storage: new InMemorySessionStorage(), baseUrl, email, password });
+  const gateway = new URL(process.env.SEMIONT_API_URL ?? 'http://localhost:4000');
+  const session = await SemiontSession.signInDevice({
+    kb: httpKb({
+      id: 'synthetic-family-ingest-corpus',
+      label: 'synthetic-family ingest-corpus',
+      host: gateway.hostname,
+      port: Number(gateway.port) || 4000,
+      protocol: gateway.protocol === 'https:' ? 'https' : 'http',
+    }),
+    storage: new InMemorySessionStorage(),
+    onCode: ({ verificationUri, verificationUriComplete, userCode }) => {
+      console.error(`Approve this script at ${verificationUriComplete ?? verificationUri}`);
+      if (!verificationUriComplete) console.error(`Code: ${userCode}`);
+    },
+  });
   const semiont = session.client;
 
   try {

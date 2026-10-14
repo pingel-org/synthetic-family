@@ -1,15 +1,14 @@
 /**
  * mark-places-and-events — detect places, historical events, and dates.
  *
- * Single mark.assist with motivation 'linking' across a configured set of
+ * Single mark.delegate with motivation 'linking' across a configured set of
  * non-person entity types (places, events, dates, eras).
  *
  * Usage: tsx skills/mark-places-and-events/script.ts [<resourceId>] [--interactive]
  */
 
-import { SemiontSession, InMemorySessionStorage, type KbTarget, entityType, resourceId as ridBrand, type ResourceId } from '@semiont/sdk';
+import { SemiontSession, InMemorySessionStorage, httpKb, entityType, resourceId as ridBrand, type ResourceId } from '@semiont/sdk';
 import { confirm, close as closeInteractive } from '../../src/interactive.js';
-import { createdCount } from '../../src/mark-result.js';
 
 const ENTITY_TYPES = (
   process.env.ENTITY_TYPES ??
@@ -44,17 +43,21 @@ async function main(): Promise<void> {
   const args = process.argv.slice(2).filter((a) => !a.startsWith('-'));
   const explicitResourceId = args[0];
 
-  const baseUrl = process.env.SEMIONT_API_URL ?? 'http://localhost:4000';
-  const email = process.env.SEMIONT_USER_EMAIL!;
-  const password = process.env.SEMIONT_USER_PASSWORD!;
-  const u = new URL(baseUrl);
-  const kb: KbTarget = {
-    id: 'synthetic-family-mark-places-and-events',
-    label: 'synthetic-family mark-places-and-events',
-    email,
-    endpoint: { kind: 'http', host: u.hostname, port: Number(u.port) || 4000, protocol: u.protocol.replace(':', '') as 'http' | 'https' },
-  };
-  const session = await SemiontSession.signInHttp({ kb, storage: new InMemorySessionStorage(), baseUrl, email, password });
+  const gateway = new URL(process.env.SEMIONT_API_URL ?? 'http://localhost:4000');
+  const session = await SemiontSession.signInDevice({
+    kb: httpKb({
+      id: 'synthetic-family-mark-places-and-events',
+      label: 'synthetic-family mark-places-and-events',
+      host: gateway.hostname,
+      port: Number(gateway.port) || 4000,
+      protocol: gateway.protocol === 'https:' ? 'https' : 'http',
+    }),
+    storage: new InMemorySessionStorage(),
+    onCode: ({ verificationUri, verificationUriComplete, userCode }) => {
+      console.error(`Approve this script at ${verificationUriComplete ?? verificationUri}`);
+      if (!verificationUriComplete) console.error(`Code: ${userCode}`);
+    },
+  });
   const semiont = session.client;
 
   try {
@@ -69,7 +72,7 @@ async function main(): Promise<void> {
             (t) => t === 'Biography' || t === 'Subject' || t === 'Letter' || t === 'Diary' || t === 'Memoir',
           ),
         )
-        .map((r) => ridBrand(r['@id']));
+        .map((r) => r['@id']);
     }
 
     if (targets.length === 0) {
@@ -81,7 +84,7 @@ async function main(): Promise<void> {
     }
 
     console.log(
-      `Will run mark.assist (motivation: linking, ${ENTITY_TYPES.length} place/event/date types) ` +
+      `Will run mark.delegate (motivation: linking, ${ENTITY_TYPES.length} place/event/date types) ` +
         `against ${targets.length} resource(s).`,
     );
 
@@ -94,10 +97,11 @@ async function main(): Promise<void> {
 
     let totalCreated = 0;
     for (const rId of targets) {
-      const progress = await semiont.mark.assist(rId, 'linking', {
+      const done = await semiont.mark.delegate(rId, {
+        motivation: 'linking',
         entityTypes: ENTITY_TYPES,
       });
-      const n = createdCount(progress);
+      const n = done.result && 'persisted' in done.result ? done.result.persisted : 0;
       totalCreated += n;
       console.log(`  ${rId}: ${n} new annotations`);
     }

@@ -21,18 +21,18 @@ If you're an AI assistant working in this repo, this file is your orientation. T
 | Skill | What it does | New SDK verbs |
 |---|---|---|
 | [`ingest-corpus`](skills/ingest-corpus/) | Walk the repo, declare the KB's entity-type vocabulary, create one resource per file | `frame.addEntityTypes`, `yield.resource` |
-| [`mark-people`](skills/mark-people/) | Detect Person mentions (named + descriptive) | `mark.assist` (linking + descriptive references) |
-| [`mark-places-and-events`](skills/mark-places-and-events/) | Detect Place / HistoricalEvent / Date mentions | `mark.assist` (linking) |
-| [`assess-historical-anchors`](skills/assess-historical-anchors/) | Flag biography-meets-history inflection moments | `mark.assist` (assessing) |
-| [`comment-life-context`](skills/comment-life-context/) | Add inline historical exposition | `mark.assist` (commenting) |
+| [`mark-people`](skills/mark-people/) | Detect Person mentions (named + descriptive) | `mark.delegate` (linking + descriptive references) |
+| [`mark-places-and-events`](skills/mark-places-and-events/) | Detect Place / HistoricalEvent / Date mentions | `mark.delegate` (linking) |
+| [`assess-historical-anchors`](skills/assess-historical-anchors/) | Flag biography-meets-history inflection moments | `mark.delegate` (assessing) |
+| [`comment-life-context`](skills/comment-life-context/) | Add inline historical exposition | `mark.delegate` (commenting) |
 | [`build-historical-context`](skills/build-historical-context/) | Synthesize HistoricalContext resources with Wikipedia citations | `+ yield.resource`, `bind.body` |
-| [`build-place-articles`](skills/build-place-articles/) | Promote Place mentions to canonical Place resources with Wikipedia + Find a Grave URLs | `+ yield.fromContext` |
-| [`map-relationships`](skills/map-relationships/) | Promote Person mentions to Person resources, encode kinship & relationships, attach Find a Grave search URLs | `+ yield.fromContext`, `bind.body` |
+| [`build-place-articles`](skills/build-place-articles/) | Promote Place mentions to canonical Place resources with Wikipedia + Find a Grave URLs | `+ yield.delegate` |
+| [`map-relationships`](skills/map-relationships/) | Promote Person mentions to Person resources, attach Find a Grave search URLs | `+ yield.delegate`, `bind.body` |
 | [`build-timeline`](skills/build-timeline/) | Synthesize a unified chronological Timeline resource | `+ yield.resource` |
-| [`extract-period-themes`](skills/extract-period-themes/) | Tag and synthesize Theme resources for recurring period concerns | `mark.assist` (tagging) |
+| [`extract-period-themes`](skills/extract-period-themes/) | Comment on recurring period concerns and synthesize a Theme resource for each | `mark.delegate` (commenting) |
 | [`build-life-and-times`](skills/build-life-and-times/) | Per-Subject narrative synthesis interleaving life events with historical backdrop | full pipeline composition |
 
-The four tier-1 skills are one SDK call each; the seven tier-2 skills compose `mark.assist` + `gather` + `match` / `yield` + `bind` into pipelines that grow new structured layers (HistoricalContext, Place, Person, Timeline, Theme, LifeAndTimes).
+The four tier-1 skills are one SDK call each; the seven tier-2 skills compose `mark.delegate` + `gather` + `match` / `yield` + `bind` into pipelines that grow new structured layers (HistoricalContext, Place, Person, Timeline, Theme, LifeAndTimes).
 
 ## What does family / local-history research involve?
 
@@ -96,7 +96,7 @@ For a corpus of 19th–early-20th-century American family biographies (like the 
 5. `comment-life-context` adds inline exposition explaining the historical conditions surrounding each life event.
 6. `build-historical-context` matches against existing curated articles, synthesizes new HistoricalContext resources for events/eras the corpus references, with Wikipedia URLs.
 7. `build-place-articles` promotes places to canonical Place resources, citing Wikipedia.
-8. `map-relationships` promotes Person mentions to Person resources, encodes kinship and acquaintance edges, attaches Find a Grave search URLs.
+8. `map-relationships` promotes Person mentions to Person resources and attaches Find a Grave search URLs.
 9. `build-timeline` produces a unified chronological Timeline resource interleaving life events from every bio.
 10. `extract-period-themes` surfaces recurring concerns (e.g., agricultural transformation, women's civic engagement, generational continuity).
 11. `build-life-and-times` produces a per-Subject "Life and Times" narrative resource that interleaves the subject's life events with the historical backdrop.
@@ -153,8 +153,8 @@ Skills are parameterized in three tiers.
 | Var | Purpose |
 |---|---|
 | `SEMIONT_API_URL` | Gateway URL (default `http://localhost:4000`) |
-| `SEMIONT_USER_EMAIL` | Authenticating user |
-| `SEMIONT_USER_PASSWORD` | Authenticating user's password |
+
+A skill signs in by the device grant: it prints an address, and a person approves in a browser. No password passes through the script. [Signing in](https://github.com/The-AI-Alliance/semiont/blob/main/docs/builder/SIGN-IN.md) has the other ways a script can sign in.
 
 ### Tier 2 — skill-invocation parameters
 
@@ -173,7 +173,7 @@ Tier-2 env vars can pre-answer tier-3 prompts (e.g., `MATCH_THRESHOLD=25` pre-an
 | Where | What |
 |---|---|
 | [`@semiont/sdk` README](https://github.com/The-AI-Alliance/semiont/tree/main/packages/sdk) | The TypeScript surface — eight verbs (frame, yield, mark, match, bind, gather, browse, beckon) plus admin/auth/job. |
-| [SDK Usage docs](https://github.com/The-AI-Alliance/semiont/tree/main/packages/sdk/docs) | Cache semantics, reactive model, state units, error handling. |
+| [SDK Usage docs](https://github.com/The-AI-Alliance/semiont/blob/main/docs/builder/Usage.md) | Cache semantics, reactive model, state units, error handling. |
 | [Semiont protocol docs](https://github.com/The-AI-Alliance/semiont/tree/main/docs/protocol) | The eight-flow framing. |
-| [Semiont protocol skills](https://github.com/The-AI-Alliance/semiont/tree/main/docs/protocol/skills) | Reference skill packs — `semiont-wiki`, `semiont-comment`, `semiont-highlight`, etc. The patterns in this repo borrow from these. |
+| [Semiont protocol skills](https://github.com/The-AI-Alliance/semiont/tree/main/docs/builder/skills) | Reference skill packs — `semiont-wiki`, `semiont-comment`, `semiont-highlight`, etc. The patterns in this repo borrow from these. |
 | [.plans/HISTORY-SKILLS.md](.plans/HISTORY-SKILLS.md) | The full design plan for these skills. |

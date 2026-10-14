@@ -8,16 +8,16 @@ allowed-tools: Bash, Read, Write
 
 You are helping the user illuminate biographical narratives with surrounding historical context — short paragraphs in the voice of an attentive historian explaining what was going on when each life event happened.
 
-This is one of four tier-1 marking skills. It uses `mark.assist` with motivation `commenting`.
+This is one of four tier-1 marking skills. It uses `mark.delegate` with motivation `commenting`.
 
 ## What it does
 
-For each biographical resource, runs `mark.assist({ motivation: 'commenting', instructions: ... })` to surface life events whose historical conditions aren't self-evident, and add a short commentary explaining the surrounding context: what era, what institutions, what economic or social conditions were at play. The result is a lightly-illuminated reading copy — the surface biographical text plus a layer of inline exposition.
+For each biographical resource, runs `mark.delegate({ motivation: 'commenting', instructions: ... })` to surface life events whose historical conditions aren't self-evident, and add a short commentary explaining the surrounding context: what era, what institutions, what economic or social conditions were at play. The result is a lightly-illuminated reading copy — the surface biographical text plus a layer of inline exposition.
 
 ## SDK verbs
 
 - `browse.resources` — find biographical targets
-- `mark.assist({ motivation: 'commenting', instructions: ... })`
+- `mark.delegate({ motivation: 'commenting', instructions: ... })`
 
 ## Parameters
 
@@ -37,11 +37,11 @@ HOST_ADDR=$(container run --rm node:24-alpine sh -c "ip route | awk '/default/{p
 
 container run --rm -v "$(pwd):/work" -w /work \
   -e SEMIONT_API_URL=http://${HOST_ADDR}:4000 \
-  -e SEMIONT_USER_EMAIL=admin@example.com \
-  -e SEMIONT_USER_PASSWORD=<your-password> \
   node:24-alpine \
-  sh -c 'npm install --silent --no-fund @semiont/sdk tsx && npx tsx skills/comment-life-context/script.ts'
+  sh -c 'npm ci --no-audit --no-fund && npx tsx skills/comment-life-context/script.ts'
 ```
+
+The script prints an address: open it in a browser and approve the sign-in. [Signing in](https://github.com/The-AI-Alliance/semiont/blob/main/docs/builder/SIGN-IN.md) has the other ways a script can sign in.
 
 (See [`ingest-corpus`'s "Run it"](../ingest-corpus/SKILL.md#run-it) for networking notes.)
 

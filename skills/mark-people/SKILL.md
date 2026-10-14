@@ -8,18 +8,18 @@ allowed-tools: Bash, Read, Write
 
 You are helping the user detect Person mentions in a family / local-history corpus.
 
-This is one of four tier-1 marking skills (the others are `mark-places-and-events`, `assess-historical-anchors`, `comment-life-context`). Each one is a thin wrapper around a single `mark.assist` call.
+This is one of four tier-1 marking skills (the others are `mark-places-and-events`, `assess-historical-anchors`, `comment-life-context`). Each one is a thin wrapper around a single `mark.delegate` call.
 
 ## What it does
 
-For each Biography / Subject resource in the corpus (or one specific resource passed as a CLI arg), runs `mark.assist` with motivation `linking`, `includeDescriptiveReferences: true`, and a configured list of person-related entity types. Tags both formal-name spans ("Margaret Hale", "Justice Smith") and anaphoric mentions ("his father", "the schoolteacher", "the visiting cousin").
+For each Biography / Subject resource in the corpus (or one specific resource passed as a CLI arg), runs `mark.delegate` with motivation `linking`, `includeDescriptiveReferences: true`, and a configured list of person-related entity types. Tags both formal-name spans ("Margaret Hale", "Justice Smith") and anaphoric mentions ("his father", "the schoolteacher", "the visiting cousin").
 
 The annotations are unresolved — they record what kind of entity each span refers to, but don't yet link to a canonical Person resource. Skill 8 (`map-relationships`) does that promotion.
 
 ## SDK verbs
 
 - `browse.resources` — find Biography/Subject targets (when no resourceId arg)
-- `mark.assist({ motivation: 'linking', includeDescriptiveReferences: true, entityTypes: [...] })`
+- `mark.delegate({ motivation: 'linking', includeDescriptiveReferences: true, entityTypes: [...] })`
 
 ## Parameters
 
@@ -41,11 +41,11 @@ HOST_ADDR=$(container run --rm node:24-alpine sh -c "ip route | awk '/default/{p
 
 container run --rm -v "$(pwd):/work" -w /work \
   -e SEMIONT_API_URL=http://${HOST_ADDR}:4000 \
-  -e SEMIONT_USER_EMAIL=admin@example.com \
-  -e SEMIONT_USER_PASSWORD=<your-password> \
   node:24-alpine \
-  sh -c 'npm install --silent --no-fund @semiont/sdk tsx && npx tsx skills/mark-people/script.ts'
+  sh -c 'npm ci --no-audit --no-fund && npx tsx skills/mark-people/script.ts'
 ```
+
+The script prints an address: open it in a browser and approve the sign-in. [Signing in](https://github.com/The-AI-Alliance/semiont/blob/main/docs/builder/SIGN-IN.md) has the other ways a script can sign in.
 
 Override the entity types per run with `-e ENTITY_TYPES='Person,Relative'` for a faster kin-only pass. Add `-e SEMIONT_INTERACTIVE=1 -it` to enable the confirm prompt.
 

@@ -1,6 +1,6 @@
 ---
 name: extract-period-themes
-description: Tag passages with recurring period themes (economic, social, civic, generational) and synthesize one Theme resource per distinct theme, with example passages bound to it.
+description: Comment on passages with the recurring period theme each exemplifies (economic, social, civic, generational), and synthesize one Theme resource per distinct theme.
 disable-model-invocation: false
 user-invocable: true
 allowed-tools: Bash, Read, Write
@@ -10,14 +10,14 @@ You are helping the user surface the recurring concerns that thread through a fa
 
 ## What it does
 
-1. Pass 1 — tagging: `mark.assist({ motivation: 'tagging', instructions: ... })` over each biographical resource. The model tags passages with short hyphenated theme labels (e.g., `agricultural-transformation`, `frontier-resilience`, `womens-civic-engagement`).
-2. Pass 2 — aggregation: collect every tagging annotation by theme value. For each distinct theme, `yield.resource` a Theme resource with markdown body listing example passages and their source biographies.
+1. Pass 1 — discovery: `mark.delegate({ motivation: 'commenting', instructions: ... })` over each biographical resource. The model comments on each thematically-significant passage, and the comment is the theme alone: a short hyphenated label (e.g., `agricultural-transformation`, `frontier-resilience`, `womens-civic-engagement`).
+2. Pass 2 — aggregation: collect every commenting annotation whose comment is such a label, publish the labels via `frame.addEntityTypes`, and for each distinct theme `yield.resource` a Theme resource with markdown body listing example passages and their source biographies.
 
 The themes that surface depend entirely on the corpus — a 19th-century homestead family produces different themes than a 20th-century immigration archive.
 
 ## SDK verbs
 
-- `mark.assist({ motivation: 'tagging', instructions: ... })` — pass 1
+- `mark.delegate({ motivation: 'commenting', instructions: ... })` — pass 1
 - `browse.resources`, `browse.annotations` — pass 2 collection
 - `yield.resource` — Theme resources
 
@@ -38,11 +38,11 @@ HOST_ADDR=$(container run --rm node:24-alpine sh -c "ip route | awk '/default/{p
 
 container run --rm -v "$(pwd):/work" -w /work \
   -e SEMIONT_API_URL=http://${HOST_ADDR}:4000 \
-  -e SEMIONT_USER_EMAIL=admin@example.com \
-  -e SEMIONT_USER_PASSWORD=<your-password> \
   node:24-alpine \
-  sh -c 'npm install --silent --no-fund @semiont/sdk tsx && npx tsx skills/extract-period-themes/script.ts'
+  sh -c 'npm ci --no-audit --no-fund && npx tsx skills/extract-period-themes/script.ts'
 ```
+
+The script prints an address: open it in a browser and approve the sign-in. [Signing in](https://github.com/The-AI-Alliance/semiont/blob/main/docs/builder/SIGN-IN.md) has the other ways a script can sign in.
 
 ## Output
 

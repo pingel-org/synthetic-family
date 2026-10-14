@@ -1,16 +1,15 @@
 /**
  * mark-people — detect Person mentions across the corpus.
  *
- * Runs mark.assist with motivation 'linking', includeDescriptiveReferences: true,
+ * Runs mark.delegate with motivation 'linking', includeDescriptiveReferences: true,
  * and a configurable list of person-related entity types. Operates over all
  * Biography-typed resources by default; pass <resourceId> to scope to one.
  *
  * Usage: tsx skills/mark-people/script.ts [<resourceId>] [--interactive]
  */
 
-import { SemiontSession, InMemorySessionStorage, type KbTarget, entityType, resourceId as ridBrand, type ResourceId } from '@semiont/sdk';
+import { SemiontSession, InMemorySessionStorage, httpKb, entityType, resourceId as ridBrand, type ResourceId } from '@semiont/sdk';
 import { confirm, close as closeInteractive } from '../../src/interactive.js';
-import { createdCount } from '../../src/mark-result.js';
 
 const ENTITY_TYPES = (
   process.env.ENTITY_TYPES ??
@@ -23,17 +22,21 @@ async function main(): Promise<void> {
   const args = process.argv.slice(2).filter((a) => !a.startsWith('-'));
   const explicitResourceId = args[0];
 
-  const baseUrl = process.env.SEMIONT_API_URL ?? 'http://localhost:4000';
-  const email = process.env.SEMIONT_USER_EMAIL!;
-  const password = process.env.SEMIONT_USER_PASSWORD!;
-  const u = new URL(baseUrl);
-  const kb: KbTarget = {
-    id: 'synthetic-family-mark-people',
-    label: 'synthetic-family mark-people',
-    email,
-    endpoint: { kind: 'http', host: u.hostname, port: Number(u.port) || 4000, protocol: u.protocol.replace(':', '') as 'http' | 'https' },
-  };
-  const session = await SemiontSession.signInHttp({ kb, storage: new InMemorySessionStorage(), baseUrl, email, password });
+  const gateway = new URL(process.env.SEMIONT_API_URL ?? 'http://localhost:4000');
+  const session = await SemiontSession.signInDevice({
+    kb: httpKb({
+      id: 'synthetic-family-mark-people',
+      label: 'synthetic-family mark-people',
+      host: gateway.hostname,
+      port: Number(gateway.port) || 4000,
+      protocol: gateway.protocol === 'https:' ? 'https' : 'http',
+    }),
+    storage: new InMemorySessionStorage(),
+    onCode: ({ verificationUri, verificationUriComplete, userCode }) => {
+      console.error(`Approve this script at ${verificationUriComplete ?? verificationUri}`);
+      if (!verificationUriComplete) console.error(`Code: ${userCode}`);
+    },
+  });
   const semiont = session.client;
 
   try {
@@ -46,7 +49,7 @@ async function main(): Promise<void> {
         .filter((r) =>
           (r.entityTypes ?? []).some((t) => t === 'Biography' || t === 'Subject'),
         )
-        .map((r) => ridBrand(r['@id']));
+        .map((r) => r['@id']);
     }
 
     if (targets.length === 0) {
@@ -58,7 +61,7 @@ async function main(): Promise<void> {
     }
 
     console.log(
-      `Will run mark.assist (motivation: linking, descriptive references on, ` +
+      `Will run mark.delegate (motivation: linking, descriptive references on, ` +
         `${ENTITY_TYPES.length} types) against ${targets.length} resource(s):`,
     );
     for (const t of targets) console.log(`  - ${t}`);
@@ -73,11 +76,12 @@ async function main(): Promise<void> {
 
     let totalCreated = 0;
     for (const rId of targets) {
-      const progress = await semiont.mark.assist(rId, 'linking', {
+      const done = await semiont.mark.delegate(rId, {
+        motivation: 'linking',
         entityTypes: ENTITY_TYPES,
         includeDescriptiveReferences: true,
       });
-      const n = createdCount(progress);
+      const n = done.result && 'persisted' in done.result ? done.result.persisted : 0;
       totalCreated += n;
       console.log(`  ${rId}: ${n} new annotations`);
     }
