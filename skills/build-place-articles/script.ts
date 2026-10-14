@@ -11,10 +11,10 @@
 import {
   SemiontSession,
   InMemorySessionStorage,
-  type KbTarget,
-  resourceId as ridBrand,
+  httpKb,
+  getAnnotationExactText,
+  getEntityTypes,
   type AnnotationId,
-  type GatheredContext,
   type ResourceId,
 } from '@semiont/sdk';
 import { wikipediaSearch, formatExternalReferences } from '../../src/wikipedia.js';
@@ -38,17 +38,21 @@ function slugify(text: string): string {
 }
 
 async function main(): Promise<void> {
-  const baseUrl = process.env.SEMIONT_API_URL ?? 'http://localhost:4000';
-  const email = process.env.SEMIONT_USER_EMAIL!;
-  const password = process.env.SEMIONT_USER_PASSWORD!;
-  const u = new URL(baseUrl);
-  const kb: KbTarget = {
-    id: 'synthetic-family-build-place-articles',
-    label: 'synthetic-family build-place-articles',
-    email,
-    endpoint: { kind: 'http', host: u.hostname, port: Number(u.port) || 4000, protocol: u.protocol.replace(':', '') as 'http' | 'https' },
-  };
-  const session = await SemiontSession.signInHttp({ kb, storage: new InMemorySessionStorage(), baseUrl, email, password });
+  const gateway = new URL(process.env.SEMIONT_API_URL ?? 'http://localhost:4000');
+  const session = await SemiontSession.signInDevice({
+    kb: httpKb({
+      id: 'synthetic-family-build-place-articles',
+      label: 'synthetic-family build-place-articles',
+      host: gateway.hostname,
+      port: Number(gateway.port) || 4000,
+      protocol: gateway.protocol === 'https:' ? 'https' : 'http',
+    }),
+    storage: new InMemorySessionStorage(),
+    onCode: ({ verificationUri, verificationUriComplete, userCode }) => {
+      console.error(`Approve this script at ${verificationUriComplete ?? verificationUri}`);
+      if (!verificationUriComplete) console.error(`Code: ${userCode}`);
+    },
+  });
   const semiont = session.client;
 
   try {
@@ -62,30 +66,14 @@ async function main(): Promise<void> {
     type AnnoRef = { rId: ResourceId; annId: AnnotationId; text: string; entityTypes: string[] };
     const placeAnnotations: AnnoRef[] = [];
     for (const r of bioResources) {
-      const rId = ridBrand(r['@id']);
+      const rId = r['@id'];
       const annotations = await semiont.browse.annotations(rId).fresh();
       for (const ann of annotations) {
         if (ann.motivation !== 'linking') continue;
-        const bodies = Array.isArray(ann.body) ? ann.body : ann.body ? [ann.body] : [];
-        const ets = bodies
-          .flatMap((b) =>
-            b.type === 'TextualBody' && b.purpose === 'tagging'
-              ? (Array.isArray(b.value) ? b.value : [b.value])
-              : [],
-          );
-        const matchedPlaces = ets.filter((t: string) => PLACE_TYPES.has(t));
+        const ets = getEntityTypes(ann);
+        const matchedPlaces = ets.filter((t) => PLACE_TYPES.has(t));
         if (matchedPlaces.length === 0) continue;
-        const target = ann.target;
-        const selectors =
-          typeof target === 'string' || !target.selector
-            ? []
-            : Array.isArray(target.selector)
-              ? target.selector
-              : [target.selector];
-        let text = '';
-        for (const s of selectors) {
-          if (s.type === 'TextQuoteSelector') { text = s.exact; break; }
-        }
+        const text = getAnnotationExactText(ann);
         placeAnnotations.push({
           rId,
           annId: ann.id,
@@ -127,9 +115,7 @@ async function main(): Promise<void> {
       const sample = anns[0];
       if (!sample) continue;
 
-      const gather = await semiont.gather.annotation(sample.rId, sample.annId, { contextWindow: 1500 });
-      if (!('response' in gather)) continue;
-      const context = gather.response as GatheredContext;
+      const { response: context } = await semiont.gather.annotation(sample.rId, sample.annId, { contextWindow: 1500 });
 
       const matchResult = await semiont.match.search(sample.rId, sample.annId, context, {
         limit: 5,
@@ -137,7 +123,7 @@ async function main(): Promise<void> {
       });
       const top = matchResult.response[0];
 
-      let targetResourceId: string;
+      let targetResourceId: ResourceId;
       if (top && (top.score ?? 0) >= MATCH_THRESHOLD) {
         targetResourceId = top['@id'];
         console.log(`  ↪ "${sample.text}" → ${top.name} (existing, score ${top.score})`);

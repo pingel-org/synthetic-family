@@ -32,8 +32,8 @@ This repo ships eleven skills that build a layered family / local-history KB on 
 | [`comment-life-context`](skills/comment-life-context/SKILL.md) | Add inline historian's commentary explaining flagged inflection moments. |
 | [`build-historical-context`](skills/build-historical-context/SKILL.md) | Synthesize HistoricalContext resources for events / eras / institutions, with Wikipedia citations. |
 | [`build-place-articles`](skills/build-place-articles/SKILL.md) | Synthesize Place resources for towns, counties, military locations, institutions, cemeteries. |
-| [`map-relationships`](skills/map-relationships/SKILL.md) | Promote Person mentions to canonical Person resources; encode kinship; attach Find a Grave URLs. |
-| [`extract-period-themes`](skills/extract-period-themes/SKILL.md) | Tag passages with recurring period themes; synthesize one Theme resource per distinct theme. |
+| [`map-relationships`](skills/map-relationships/SKILL.md) | Promote Person mentions to canonical Person resources; attach Find a Grave URLs. |
+| [`extract-period-themes`](skills/extract-period-themes/SKILL.md) | Comment on passages with their period theme; synthesize one Theme resource per distinct theme. |
 | [`build-timeline`](skills/build-timeline/SKILL.md) | Synthesize a unified chronological Timeline resource interleaving dated events from every biography. |
 | [`build-life-and-times`](skills/build-life-and-times/SKILL.md) | For a target Subject, synthesize a unified narrative interleaving life events with simultaneous historical context. |
 

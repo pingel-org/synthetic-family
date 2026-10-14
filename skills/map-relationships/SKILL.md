@@ -1,6 +1,6 @@
 ---
 name: map-relationships
-description: Promote Person mentions to canonical Person resources, encode kinship and other relationships between them, and attach Find a Grave search URLs (or pre-supplied memorial URLs) for users with real family-history data. Strictly source-grounded — never invents biographical subjects.
+description: Promote Person mentions to canonical Person resources, and attach Find a Grave search URLs (or pre-supplied memorial URLs) for users with real family-history data. Kinship and other relationships are the assistant's to decide and record. Strictly source-grounded — never invents biographical subjects.
 disable-model-invocation: false
 user-invocable: true
 allowed-tools: Bash, Read, Write
@@ -25,7 +25,7 @@ The skill **only promotes Person spans that the source documents actually contai
      - Wikipedia URL (if the search returns one — typically for HistoricalFigure-typed people).
      - **Find a Grave**: a pre-supplied memorial URL if the source bio frontmatter or body contains one (`memorial: https://www.findagrave.com/memorial/12345`); otherwise a deterministic *search URL* the user can follow manually.
    - Bind every annotation in the cluster to the resolved/synthesized resource.
-4. Relationship-extraction pass: `mark.assist` with an instruction to tag relationship pairs (kinship, employment, military, neighbor, etc.). Each detected relationship becomes a tagged linking annotation.
+4. Relationships (kinship, employment, military service, neighbors) are not found by a job, and a linking job takes no instructions. Deciding that a passage relates two people is yours, reading the passage as the assistant, or the user's. The method, and the script that records what you decided, are the [`semiont-relate`](https://github.com/The-AI-Alliance/semiont/tree/main/docs/builder/skills/semiont-relate) skill's: a relationship is a Relationship resource the establishing passage is bound to.
 
 ## SDK verbs
 
@@ -33,7 +33,6 @@ The skill **only promotes Person spans that the source documents actually contai
 - `gather.annotation`, `match.search`
 - `yield.resource` (synthesized Person resources)
 - `bind.body` (annotations → Person)
-- `mark.assist` (relationship-extraction pass)
 
 ## Find a Grave integration — important caveat
 
@@ -54,10 +53,7 @@ For programmatic verification of cemetery / death records, use APIs that have te
 
 ## Tier-3 interactive checkpoints
 
-Two checkpoints:
-
-1. Before promoting Person clusters: `confirm` after showing the cluster count, with explicit reminder that the skill never invents people.
-2. Before the relationship-extraction pass: `confirm` separately so users can skip it (it's an extra `mark.assist` call per resource).
+Before promoting Person clusters: `confirm` after showing the cluster count, with explicit reminder that the skill never invents people.
 
 ## Run it
 
@@ -68,12 +64,12 @@ HOST_ADDR=$(container run --rm node:24-alpine sh -c "ip route | awk '/default/{p
 
 container run --rm -v "$(pwd):/work" -w /work \
   -e SEMIONT_API_URL=http://${HOST_ADDR}:4000 \
-  -e SEMIONT_USER_EMAIL=admin@example.com \
-  -e SEMIONT_USER_PASSWORD=<your-password> \
   -e MATCH_THRESHOLD=30 \
   node:24-alpine \
-  sh -c 'npm install --silent --no-fund @semiont/sdk tsx && npx tsx skills/map-relationships/script.ts'
+  sh -c 'npm ci --no-audit --no-fund && npx tsx skills/map-relationships/script.ts'
 ```
+
+The script prints an address: open it in a browser and approve the sign-in. [Signing in](https://github.com/The-AI-Alliance/semiont/blob/main/docs/builder/SIGN-IN.md) has the other ways a script can sign in.
 
 (See [`ingest-corpus`'s "Run it"](../ingest-corpus/SKILL.md#run-it) for networking notes.)
 
@@ -86,4 +82,4 @@ Per-cluster decisions during the run, plus per-resource relationship annotation 
 - **Pre-supplied memorial URLs are honored.** A user with real family-history data can edit a bio file's frontmatter to add `memorial: <findagrave-url>` and this skill will surface that as a direct Find a Grave reference in the synthesized Person resource. This is the recommended workflow for real users — they do the manual cemetery lookup once, drop the URL into the bio, and the skill picks it up.
 - **The fake Turner family won't get useful Find a Grave hits.** The search URLs render but Find a Grave's results page won't show real matches. That's expected — the integration is for real users.
 - **Disambiguation is hard.** Same name appearing in two different bios might or might not be the same person. The cluster heuristic (lowercased text) is coarse; the model's `gather + match` does the real work, but is imperfect. Tier-3 interactive mode would help here (let the user confirm/split clusters); this skill currently doesn't surface that prompt — adding it is a follow-up.
-- **Relationships are tagged, not synthesized into separate resources.** A relationship-extraction pass tags spans like "her son" or "his colleague" with a relationship label (parent, spouse, employee, etc.). Querying the relationship graph means walking these tagged annotations.
+- **A relationship is a resource of its own.** A passage such as "her son" or "his colleague" is bound to a Relationship resource that names both people; `gather.referencedBy` on a person lists the relationships they are in.

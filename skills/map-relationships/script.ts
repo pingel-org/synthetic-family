@@ -1,7 +1,9 @@
 /**
- * map-relationships — promote Person mentions to Person resources, encode
- * kinship/relationship edges, and attach Find a Grave search URLs for users
- * with real family-history data.
+ * map-relationships — promote Person mentions to Person resources, and attach
+ * Find a Grave search URLs for users with real family-history data.
+ *
+ * Kinship and other relationships between people are not found by a job:
+ * SKILL.md says how they are recorded.
  *
  * Strictly source-grounded: only promotes Person spans that the source
  * documents actually contain. Does not invent biographical subjects.
@@ -12,16 +14,15 @@
 import {
   SemiontSession,
   InMemorySessionStorage,
-  type KbTarget,
-  resourceId as ridBrand,
+  httpKb,
+  getAnnotationExactText,
+  getEntityTypes,
   type AnnotationId,
-  type GatheredContext,
   type ResourceId,
 } from '@semiont/sdk';
 import { wikipediaSearch, formatExternalReferences, type ExternalRef } from '../../src/wikipedia.js';
 import { findAGraveSearchRef, extractMemorialUrl, findAGraveMemorialRef } from '../../src/findagrave.js';
 import { confirm, close as closeInteractive } from '../../src/interactive.js';
-import { createdCount } from '../../src/mark-result.js';
 
 const MATCH_THRESHOLD = Number(process.env.MATCH_THRESHOLD ?? 30);
 
@@ -41,17 +42,21 @@ interface AnnoRef {
 }
 
 async function main(): Promise<void> {
-  const baseUrl = process.env.SEMIONT_API_URL ?? 'http://localhost:4000';
-  const email = process.env.SEMIONT_USER_EMAIL!;
-  const password = process.env.SEMIONT_USER_PASSWORD!;
-  const u = new URL(baseUrl);
-  const kb: KbTarget = {
-    id: 'synthetic-family-map-relationships',
-    label: 'synthetic-family map-relationships',
-    email,
-    endpoint: { kind: 'http', host: u.hostname, port: Number(u.port) || 4000, protocol: u.protocol.replace(':', '') as 'http' | 'https' },
-  };
-  const session = await SemiontSession.signInHttp({ kb, storage: new InMemorySessionStorage(), baseUrl, email, password });
+  const gateway = new URL(process.env.SEMIONT_API_URL ?? 'http://localhost:4000');
+  const session = await SemiontSession.signInDevice({
+    kb: httpKb({
+      id: 'synthetic-family-map-relationships',
+      label: 'synthetic-family map-relationships',
+      host: gateway.hostname,
+      port: Number(gateway.port) || 4000,
+      protocol: gateway.protocol === 'https:' ? 'https' : 'http',
+    }),
+    storage: new InMemorySessionStorage(),
+    onCode: ({ verificationUri, verificationUriComplete, userCode }) => {
+      console.error(`Approve this script at ${verificationUriComplete ?? verificationUri}`);
+      if (!verificationUriComplete) console.error(`Code: ${userCode}`);
+    },
+  });
   const semiont = session.client;
 
   try {
@@ -66,30 +71,14 @@ async function main(): Promise<void> {
     // Collect Person annotations
     const personAnnotations: AnnoRef[] = [];
     for (const r of bioResources) {
-      const rId = ridBrand(r['@id']);
+      const rId = r['@id'];
       const annotations = await semiont.browse.annotations(rId).fresh();
       for (const ann of annotations) {
         if (ann.motivation !== 'linking') continue;
-        const bodies = Array.isArray(ann.body) ? ann.body : ann.body ? [ann.body] : [];
-        const ets = bodies
-          .flatMap((b) =>
-            b.type === 'TextualBody' && b.purpose === 'tagging'
-              ? (Array.isArray(b.value) ? b.value : [b.value])
-              : [],
-          );
-        const matchedPeople = ets.filter((t: string) => PERSON_TYPES.has(t));
+        const ets = getEntityTypes(ann);
+        const matchedPeople = ets.filter((t) => PERSON_TYPES.has(t));
         if (matchedPeople.length === 0) continue;
-        const target = ann.target;
-        const selectors =
-          typeof target === 'string' || !target.selector
-            ? []
-            : Array.isArray(target.selector)
-              ? target.selector
-              : [target.selector];
-        let text = '';
-        for (const s of selectors) {
-          if (s.type === 'TextQuoteSelector') { text = s.exact; break; }
-        }
+        const text = getAnnotationExactText(ann);
         personAnnotations.push({
           rId,
           annId: ann.id,
@@ -137,9 +126,7 @@ async function main(): Promise<void> {
       const sample = anns[0];
       if (!sample) continue;
 
-      const gather = await semiont.gather.annotation(sample.rId, sample.annId, { contextWindow: 1500 });
-      if (!('response' in gather)) continue;
-      const context = gather.response as GatheredContext;
+      const { response: context } = await semiont.gather.annotation(sample.rId, sample.annId, { contextWindow: 1500 });
 
       // Match against existing Person resources (could include skill-1-ingested
       // Subject biographies — those are already Person-typed).
@@ -149,7 +136,7 @@ async function main(): Promise<void> {
       });
       const top = matchResult.response[0];
 
-      let targetResourceId: string;
+      let targetResourceId: ResourceId;
       if (top && (top.score ?? 0) >= MATCH_THRESHOLD) {
         targetResourceId = top['@id'];
         console.log(`  ↪ "${sample.text}" → ${top.name} (existing, score ${top.score})`);
@@ -216,36 +203,6 @@ async function main(): Promise<void> {
     console.log(
       `\nPerson layer: ${synthesized} new Person resources synthesized; ${bound} annotations bound.`,
     );
-
-    // Relationship-extraction pass: ask the model to tag pairs of named people
-    // with their relationship. Each detected relationship becomes a binding
-    // annotation tagged with the relationship label.
-    console.log(
-      `\nRunning relationship-extraction pass (mark.assist with relationship instruction)...`,
-    );
-    const relProceed = await confirm(
-      'Proceed to detect kinship / acquaintance relationships between named people in the corpus?',
-      true,
-    );
-    if (relProceed) {
-      const relInstructions =
-        'For pairs of named persons in the text, identify any explicit relationship: ' +
-        'kinship (parent, child, sibling, spouse, in-law), employment (employer, employee, ' +
-        'colleague), military service together, civic association, neighbor, attorney-client, ' +
-        'patient-doctor, etc. Tag the span where the relationship is established and quote the ' +
-        "supporting language. Use a single tag value naming the relationship type, e.g. " +
-        "'spouse', 'parent', 'colleague'.";
-
-      let relTotal = 0;
-      for (const r of bioResources) {
-        const rId = ridBrand(r['@id']);
-        const progress = await semiont.mark.assist(rId, 'linking', { instructions: relInstructions });
-        const n = createdCount(progress);
-        relTotal += n;
-        console.log(`  ${rId}: ${n} relationship annotations`);
-      }
-      console.log(`  Total relationship annotations created: ${relTotal}`);
-    }
 
     closeInteractive();
   } finally {

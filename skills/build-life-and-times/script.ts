@@ -16,7 +16,14 @@
  * Usage: tsx skills/build-life-and-times/script.ts <subjectResourceId> [--interactive]
  */
 
-import { SemiontSession, InMemorySessionStorage, type KbTarget, resourceId as ridBrand, type ResourceDescriptor } from '@semiont/sdk';
+import {
+  SemiontSession,
+  InMemorySessionStorage,
+  httpKb,
+  getAnnotationExactText,
+  resourceId as ridBrand,
+  type ResourceDescriptor,
+} from '@semiont/sdk';
 import { confirm, close as closeInteractive } from '../../src/interactive.js';
 
 function slugify(text: string): string {
@@ -51,17 +58,21 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  const baseUrl = process.env.SEMIONT_API_URL ?? 'http://localhost:4000';
-  const email = process.env.SEMIONT_USER_EMAIL!;
-  const password = process.env.SEMIONT_USER_PASSWORD!;
-  const u = new URL(baseUrl);
-  const kb: KbTarget = {
-    id: 'synthetic-family-build-life-and-times',
-    label: 'synthetic-family build-life-and-times',
-    email,
-    endpoint: { kind: 'http', host: u.hostname, port: Number(u.port) || 4000, protocol: u.protocol.replace(':', '') as 'http' | 'https' },
-  };
-  const session = await SemiontSession.signInHttp({ kb, storage: new InMemorySessionStorage(), baseUrl, email, password });
+  const gateway = new URL(process.env.SEMIONT_API_URL ?? 'http://localhost:4000');
+  const session = await SemiontSession.signInDevice({
+    kb: httpKb({
+      id: 'synthetic-family-build-life-and-times',
+      label: 'synthetic-family build-life-and-times',
+      host: gateway.hostname,
+      port: Number(gateway.port) || 4000,
+      protocol: gateway.protocol === 'https:' ? 'https' : 'http',
+    }),
+    storage: new InMemorySessionStorage(),
+    onCode: ({ verificationUri, verificationUriComplete, userCode }) => {
+      console.error(`Approve this script at ${verificationUriComplete ?? verificationUri}`);
+      if (!verificationUriComplete) console.error(`Code: ${userCode}`);
+    },
+  });
   const semiont = session.client;
   const subjectRId = ridBrand(subjectResourceId);
 
@@ -82,17 +93,7 @@ async function main(): Promise<void> {
 
     const items: DatedItem[] = [];
     for (const ann of annotations) {
-      const target = ann.target;
-      const selectors =
-        typeof target === 'string' || !target.selector
-          ? []
-          : Array.isArray(target.selector)
-            ? target.selector
-            : [target.selector];
-      let text = '';
-      for (const s of selectors) {
-        if (s.type === 'TextQuoteSelector') { text = s.exact; break; }
-      }
+      const text = getAnnotationExactText(ann);
       const year = extractYear(text);
 
       const bodies = Array.isArray(ann.body) ? ann.body : ann.body ? [ann.body] : [];

@@ -12,12 +12,12 @@ This is one of four tier-1 marking skills. It mirrors `mark-people` but for plac
 
 ## What it does
 
-For each biographical resource (Biography, Subject, Letter, Diary, Memoir), runs `mark.assist` with motivation `linking` and a wide list of place / event / date entity types. Tags spans like county / town / state names, military locations, civic institutions, named wars and battles, named legislation, named disasters, dates and date ranges.
+For each biographical resource (Biography, Subject, Letter, Diary, Memoir), runs `mark.delegate` with motivation `linking` and a wide list of place / event / date entity types. Tags spans like county / town / state names, military locations, civic institutions, named wars and battles, named legislation, named disasters, dates and date ranges.
 
 ## SDK verbs
 
 - `browse.resources` — find biographical targets
-- `mark.assist({ motivation: 'linking', entityTypes: [...] })`
+- `mark.delegate({ motivation: 'linking', entityTypes: [...] })`
 
 ## Parameters
 
@@ -44,11 +44,11 @@ HOST_ADDR=$(container run --rm node:24-alpine sh -c "ip route | awk '/default/{p
 
 container run --rm -v "$(pwd):/work" -w /work \
   -e SEMIONT_API_URL=http://${HOST_ADDR}:4000 \
-  -e SEMIONT_USER_EMAIL=admin@example.com \
-  -e SEMIONT_USER_PASSWORD=<your-password> \
   node:24-alpine \
-  sh -c 'npm install --silent --no-fund @semiont/sdk tsx && npx tsx skills/mark-places-and-events/script.ts'
+  sh -c 'npm ci --no-audit --no-fund && npx tsx skills/mark-places-and-events/script.ts'
 ```
+
+The script prints an address: open it in a browser and approve the sign-in. [Signing in](https://github.com/The-AI-Alliance/semiont/blob/main/docs/builder/SIGN-IN.md) has the other ways a script can sign in.
 
 (See [`ingest-corpus`'s "Run it"](../ingest-corpus/SKILL.md#run-it) for networking notes.)
 

@@ -8,18 +8,18 @@ allowed-tools: Bash, Read, Write
 
 You are helping the user identify the inflection points in a biographical narrative — the moments where individual lives are shaped by larger historical forces.
 
-This is one of four tier-1 marking skills. It uses `mark.assist` with motivation `assessing` (Semiont's "red-underline" annotation type).
+This is one of four tier-1 marking skills. It uses `mark.delegate` with motivation `assessing` (Semiont's "red-underline" annotation type).
 
 ## What it does
 
-For each biographical resource, runs `mark.assist({ motivation: 'assessing', instructions: ... })` with focus on spans where a personal life event is shaped by, or directly references, a documented historical event, period, or institution. Skips spans about purely personal events (births, marriages) without historical anchoring.
+For each biographical resource, runs `mark.delegate({ motivation: 'assessing', instructions: ... })` with focus on spans where a personal life event is shaped by, or directly references, a documented historical event, period, or institution. Skips spans about purely personal events (births, marriages) without historical anchoring.
 
 The result: assessing annotations highlight the moments that `build-historical-context` (skill 6) prioritizes when synthesizing HistoricalContext resources, and that `build-life-and-times` (skill 11) uses as landmarks in its narrative.
 
 ## SDK verbs
 
 - `browse.resources` — find biographical targets
-- `mark.assist({ motivation: 'assessing', instructions: ... })`
+- `mark.delegate({ motivation: 'assessing', instructions: ... })`
 
 ## Parameters
 
@@ -45,11 +45,11 @@ HOST_ADDR=$(container run --rm node:24-alpine sh -c "ip route | awk '/default/{p
 
 container run --rm -v "$(pwd):/work" -w /work \
   -e SEMIONT_API_URL=http://${HOST_ADDR}:4000 \
-  -e SEMIONT_USER_EMAIL=admin@example.com \
-  -e SEMIONT_USER_PASSWORD=<your-password> \
   node:24-alpine \
-  sh -c 'npm install --silent --no-fund @semiont/sdk tsx && npx tsx skills/assess-historical-anchors/script.ts'
+  sh -c 'npm ci --no-audit --no-fund && npx tsx skills/assess-historical-anchors/script.ts'
 ```
+
+The script prints an address: open it in a browser and approve the sign-in. [Signing in](https://github.com/The-AI-Alliance/semiont/blob/main/docs/builder/SIGN-IN.md) has the other ways a script can sign in.
 
 (See [`ingest-corpus`'s "Run it"](../ingest-corpus/SKILL.md#run-it) for networking notes.)
 

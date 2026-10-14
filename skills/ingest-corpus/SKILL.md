@@ -46,11 +46,11 @@ HOST_ADDR=$(container run --rm node:24-alpine sh -c "ip route | awk '/default/{p
 
 container run --rm -v "$(pwd):/work" -w /work \
   -e SEMIONT_API_URL=http://${HOST_ADDR}:4000 \
-  -e SEMIONT_USER_EMAIL=admin@example.com \
-  -e SEMIONT_USER_PASSWORD=<your-password> \
   node:24-alpine \
-  sh -c 'npm install --silent --no-fund @semiont/sdk tsx && npx tsx skills/ingest-corpus/script.ts'
+  sh -c 'npm ci --no-audit --no-fund && npx tsx skills/ingest-corpus/script.ts'
 ```
+
+The script prints an address: open it in a browser and approve the sign-in. [Signing in](https://github.com/The-AI-Alliance/semiont/blob/main/docs/builder/SIGN-IN.md) has the other ways a script can sign in.
 
 Run with `-it` (interactive TTY) and add `-e SEMIONT_INTERACTIVE=1` to enable the tier-3 confirm prompt.
 
@@ -66,5 +66,5 @@ The script prints, for each file, the resource id assigned and the entity types 
 
 - **Re-running creates duplicates.** The script does not deduplicate against existing resources. Use `semiont.browse.resources({ search: '<title>' })` to check before re-running, or have the user `down + up` their stack to start fresh.
 - **The corpus directory layout is configurable.** A user with non-standard subdirectories can pass `overrides` to `discoverCorpus()` — see [`src/files.ts`](../../src/files.ts).
-- **PDFs and images are ingested as binary.** They become catalog entries but `mark.assist` (which runs in subsequent skills) only operates on `text/plain` and `text/markdown`. PDF-to-markdown conversion is out of scope for v1.
+- **PDFs and images are ingested as binary.** They become catalog entries but `mark.delegate` (which runs in subsequent skills) only operates on `text/plain` and `text/markdown`. PDF-to-markdown conversion is out of scope for v1.
 - **Pre-curated context articles in `generated/`** ingest as `HistoricalContext` resources on day 1. Skill 6 (`build-historical-context`) matches against them rather than overwriting — so any hand-curated article a user has placed there is preserved.

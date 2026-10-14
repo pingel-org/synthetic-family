@@ -1,16 +1,15 @@
 /**
  * assess-historical-anchors — flag biography-meets-history inflection moments.
  *
- * Single mark.assist with motivation 'assessing'. The instructions parameter
+ * Single mark.delegate with motivation 'assessing'. The instructions parameter
  * scopes the focus to spans where personal life events directly intersect
  * documented historical events, periods, or institutions.
  *
  * Usage: tsx skills/assess-historical-anchors/script.ts [<resourceId>] [--interactive]
  */
 
-import { SemiontSession, InMemorySessionStorage, type KbTarget, resourceId as ridBrand, type ResourceId } from '@semiont/sdk';
+import { SemiontSession, InMemorySessionStorage, httpKb, resourceId as ridBrand, type ResourceId } from '@semiont/sdk';
 import { confirm, close as closeInteractive } from '../../src/interactive.js';
-import { createdCount } from '../../src/mark-result.js';
 
 const DEFAULT_INSTRUCTIONS =
   'Identify and tag spans where a personal life event is shaped by, or directly references, ' +
@@ -25,17 +24,21 @@ async function main(): Promise<void> {
   const args = process.argv.slice(2).filter((a) => !a.startsWith('-'));
   const explicitResourceId = args[0];
 
-  const baseUrl = process.env.SEMIONT_API_URL ?? 'http://localhost:4000';
-  const email = process.env.SEMIONT_USER_EMAIL!;
-  const password = process.env.SEMIONT_USER_PASSWORD!;
-  const u = new URL(baseUrl);
-  const kb: KbTarget = {
-    id: 'synthetic-family-assess-historical-anchors',
-    label: 'synthetic-family assess-historical-anchors',
-    email,
-    endpoint: { kind: 'http', host: u.hostname, port: Number(u.port) || 4000, protocol: u.protocol.replace(':', '') as 'http' | 'https' },
-  };
-  const session = await SemiontSession.signInHttp({ kb, storage: new InMemorySessionStorage(), baseUrl, email, password });
+  const gateway = new URL(process.env.SEMIONT_API_URL ?? 'http://localhost:4000');
+  const session = await SemiontSession.signInDevice({
+    kb: httpKb({
+      id: 'synthetic-family-assess-historical-anchors',
+      label: 'synthetic-family assess-historical-anchors',
+      host: gateway.hostname,
+      port: Number(gateway.port) || 4000,
+      protocol: gateway.protocol === 'https:' ? 'https' : 'http',
+    }),
+    storage: new InMemorySessionStorage(),
+    onCode: ({ verificationUri, verificationUriComplete, userCode }) => {
+      console.error(`Approve this script at ${verificationUriComplete ?? verificationUri}`);
+      if (!verificationUriComplete) console.error(`Code: ${userCode}`);
+    },
+  });
   const semiont = session.client;
 
   try {
@@ -50,7 +53,7 @@ async function main(): Promise<void> {
             (t) => t === 'Biography' || t === 'Subject' || t === 'Letter' || t === 'Diary' || t === 'Memoir',
           ),
         )
-        .map((r) => ridBrand(r['@id']));
+        .map((r) => r['@id']);
     }
 
     if (targets.length === 0) {
@@ -60,7 +63,7 @@ async function main(): Promise<void> {
     }
 
     console.log(
-      `Will run mark.assist (motivation: assessing) against ${targets.length} resource(s).`,
+      `Will run mark.delegate (motivation: assessing) against ${targets.length} resource(s).`,
     );
     console.log(`Focus: ${INSTRUCTIONS}\n`);
 
@@ -73,10 +76,11 @@ async function main(): Promise<void> {
 
     let totalCreated = 0;
     for (const rId of targets) {
-      const progress = await semiont.mark.assist(rId, 'assessing', {
+      const done = await semiont.mark.delegate(rId, {
+        motivation: 'assessing',
         instructions: INSTRUCTIONS,
       });
-      const n = createdCount(progress);
+      const n = done.result && 'persisted' in done.result ? done.result.persisted : 0;
       totalCreated += n;
       console.log(`  ${rId}: ${n} historical anchors flagged`);
     }
