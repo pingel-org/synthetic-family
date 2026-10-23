@@ -33,7 +33,7 @@ function extractYear(text: string): number | null {
 
 async function main(): Promise<void> {
   const gateway = new URL(process.env.SEMIONT_API_URL ?? 'http://localhost:4000');
-  const session = await SemiontSession.signInDevice({
+  const opened = await SemiontSession.signInDevice({
     kb: httpKb({
       id: 'synthetic-family-build-timeline',
       label: 'synthetic-family build-timeline',
@@ -47,7 +47,7 @@ async function main(): Promise<void> {
       if (!verificationUriComplete) console.error(`Code: ${userCode}`);
     },
   });
-  const semiont = session.client;
+  const semiont = opened.session.client;
 
   try {
     const all = (await semiont.browse.resources({ limit: 1000 }).fresh()).resources;
@@ -150,7 +150,7 @@ async function main(): Promise<void> {
     console.log(`\nTimeline resource created: ${resourceId} (${body.length} bytes)`);
     closeInteractive();
   } finally {
-    await session.dispose();
+    opened.dispose();
   }
 }
 

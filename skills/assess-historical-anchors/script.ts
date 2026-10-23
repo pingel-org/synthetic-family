@@ -25,7 +25,7 @@ async function main(): Promise<void> {
   const explicitResourceId = args[0];
 
   const gateway = new URL(process.env.SEMIONT_API_URL ?? 'http://localhost:4000');
-  const session = await SemiontSession.signInDevice({
+  const opened = await SemiontSession.signInDevice({
     kb: httpKb({
       id: 'synthetic-family-assess-historical-anchors',
       label: 'synthetic-family assess-historical-anchors',
@@ -39,7 +39,7 @@ async function main(): Promise<void> {
       if (!verificationUriComplete) console.error(`Code: ${userCode}`);
     },
   });
-  const semiont = session.client;
+  const semiont = opened.session.client;
 
   try {
     let targets: ResourceId[];
@@ -88,7 +88,7 @@ async function main(): Promise<void> {
     console.log(`\nDone. Flagged ${totalCreated} historical-anchor moments.`);
     closeInteractive();
   } finally {
-    await session.dispose();
+    opened.dispose();
   }
 }
 
